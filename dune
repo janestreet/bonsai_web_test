@@ -1,0 +1,9 @@
+(library
+ (name bonsai_web_test)
+ (public_name bonsai_web_test)
+ (libraries bonsai_web core async_kernel.eager_deferred bonsai_test
+   patdiff.expect_test_patdiff virtual_dom.vdom_test_helpers async_kernel
+   async_rpc_kernel ppx_expect.config_types expect_test_helpers_core
+   js_of_ocaml patdiff.kernel)
+ (preprocess
+  (pps ppx_jane js_of_ocaml-ppx ppx_css ppx_pattern_bind bonsai.ppx_bonsai)))
