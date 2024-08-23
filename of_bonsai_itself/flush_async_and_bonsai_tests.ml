@@ -25,8 +25,7 @@ let computation iterations =
   in
   let%sub dispatcher = Rpc_effect.Rpc.dispatcher rpc_a ~where_to_connect:Self in
   let%sub callback =
-    let%arr dispatcher = dispatcher
-    and increment = increment in
+    let%arr dispatcher and increment in
     fun count ->
       if count < iterations
       then (

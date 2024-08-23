@@ -227,15 +227,15 @@ module Dispatcher_handle = struct
 
   let component ~sexp_of_response ~dispatch =
     let open Bonsai.Let_syntax in
-    let%sub dispatch = dispatch in
+    let%sub dispatch in
     let%sub send_rpc =
-      let%arr dispatch = dispatch in
+      let%arr dispatch in
       fun ~query ->
         let%bind.Effect () = Effect.print_s [%message "RPC started" (query : string)] in
         let%bind.Effect response = dispatch query in
         Effect.print_s [%message "RPC finished" (response : response Or_error.t)]
     in
-    let%arr send_rpc = send_rpc in
+    let%arr send_rpc in
     { Dispatcher_result_spec.send_rpc }
   ;;
 
@@ -275,7 +275,7 @@ module Poller_handle = struct
     let open Bonsai.Let_syntax in
     let%sub query, set_query = Bonsai.state_opt () in
     let%sub result_spec =
-      let%arr set_query = set_query in
+      let%arr set_query in
       let set_query ~query =
         let%bind.Effect () =
           Effect.of_sync_fun (fun () -> print_endline "Changing query") ()

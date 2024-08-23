@@ -416,8 +416,7 @@ let%expect_test "multiple polling_state_rpc" =
         let%sub dispatcher =
           Rpc_effect.Polling_state_rpc.dispatcher polling_state_rpc ~where_to_connect:Self
         in
-        let%arr dispatcher = dispatcher
-        and key = key in
+        let%arr dispatcher and key in
         dispatcher key)
   in
   let handle =
@@ -773,7 +772,7 @@ let%test_module "versioned polling state rpc" =
             Bonsai.const
               (Effect.of_sync_fun (fun (_ : int) -> Ok "fake rpc implementation"))
         in
-        let%arr dispatch = dispatch in
+        let%arr dispatch in
         { Spec.dispatch }
       in
       let handle =
@@ -2669,14 +2668,14 @@ let%test_module "multi-poller" =
       let%sub () =
         Bonsai.Edge.lifecycle
           ~on_activate:
-            (let%map input = input in
+            (let%map input in
              Effect.print_s [%sexp "start", (input : int)])
           ~on_deactivate:
-            (let%map input = input in
+            (let%map input in
              Effect.print_s [%sexp "stop", (input : int)])
           ()
       in
-      let%arr input = input in
+      let%arr input in
       { Rpc_effect.Poll_result.last_ok_response = Some (input, "hello")
       ; last_error = None
       ; inflight_query = None
@@ -2696,7 +2695,7 @@ let%test_module "multi-poller" =
             poller
             (Value.return 5)
         in
-        let%arr lookup = lookup in
+        let%arr lookup in
         [%message "" ~_:(lookup.last_ok_response : (int * string) option)]
       in
       let handle =
@@ -2735,8 +2734,7 @@ let%test_module "multi-poller" =
             poller
             (Value.return 5)
         in
-        let%arr a = a
-        and b = b in
+        let%arr a and b in
         [%message
           ""
             ~a:(a.last_ok_response : (int * string) option)
@@ -2778,8 +2776,7 @@ let%test_module "multi-poller" =
             poller
             (Value.return 10)
         in
-        let%arr a = a
-        and b = b in
+        let%arr a and b in
         [%message
           ""
             ~a:(a.last_ok_response : (int * string) option)
@@ -2825,7 +2822,7 @@ let%test_module "multi-poller" =
               ; refresh = Effect.Ignore
               }
         in
-        let%arr lookup = lookup in
+        let%arr lookup in
         [%message "" ~_:(lookup.last_ok_response : (int * string) option)]
       in
       let handle =
@@ -2883,8 +2880,7 @@ let%test_module "multi-poller" =
               ; refresh = Effect.Ignore
               }
         in
-        let%arr a = a
-        and b = b in
+        let%arr a and b in
         [%message
           ""
             ~a:(a.last_ok_response : (int * string) option)
@@ -2939,8 +2935,7 @@ let%test_module "multi-poller" =
               ; refresh = Effect.Ignore
               }
         in
-        let%arr a = a
-        and b = b in
+        let%arr a and b in
         [%message
           ""
             ~a:(a.last_ok_response : (int * string) option)
@@ -3038,14 +3033,14 @@ let%test_module "Rpc.poll_until_condition_met" =
       ; set_query : int -> unit
       }
 
-    let polls_until_count_is ~query_var n graph =
+    let polls_until_count_is ~query_var n (local_ graph) =
       let open Bonsai.Let_syntax in
       Rpc_effect.Rpc.poll_until_condition_met
         ~sexp_of_query:[%sexp_of: int]
         ~sexp_of_response:[%sexp_of: int]
         ~equal_query:[%equal: int]
         ~condition:
-          (let%arr n = n in
+          (let%arr n in
            fun response -> if response >= n then `Stop_polling else `Continue)
         ~equal_response:[%equal: int]
         rpc
@@ -3061,7 +3056,7 @@ let%test_module "Rpc.poll_until_condition_met" =
         Handle.create
           ~rpc_implementations:[ returns_call_count ?fail_if_less_than () ]
           (module Result_spec)
-          (fun graph -> polls_until_count_is ~query_var n graph)
+          (fun (local_ graph) -> polls_until_count_is ~query_var n graph)
       in
       let set_query query = Bonsai.Expert.Var.set query_var query in
       { handle; set_query }

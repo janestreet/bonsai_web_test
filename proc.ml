@@ -382,7 +382,7 @@ module Experimental = struct
       let component (_ : unit Value.t) =
         let open Bonsai.Let_syntax in
         let%sub result = computation in
-        let%arr result = result in
+        let%arr result in
         result, R.to_vdom result, lazy (R.view result), R.incoming result
       in
       let time_source = Bonsai.Time_source.create ~start:start_time in

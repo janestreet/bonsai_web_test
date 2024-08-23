@@ -9,7 +9,7 @@ let overflow_height = 1_000
 let%expect_test ("Bonsai prints an error message if there is a stack overflow in a \
                   computation" [@tags "no-wasm"])
   =
-  let app always_safe graph =
+  let app always_safe (local_ graph) =
     match%sub always_safe with
     | `Safe -> Bonsai.return String.Set.empty
     | `Overflow -> For_cont.basic ~height:overflow_height ~width:1 graph
@@ -28,7 +28,7 @@ let%expect_test ("Bonsai actually stack overflows when an overflowed computation
                   active" [@tags "no-wasm"])
   =
   Expect_test_helpers_core.require_does_raise (fun () ->
-    let app always_overflow graph =
+    let app always_overflow (local_ graph) =
       match%sub always_overflow with
       | `Safe -> Bonsai.return String.Set.empty
       | `Overflow -> For_cont.basic ~height:overflow_height ~width:1 graph

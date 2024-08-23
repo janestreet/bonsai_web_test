@@ -14,7 +14,7 @@ end
 
 let%expect_test "stack overflow regression test: long chain of subs" =
   (* NOTE: This expect test is a regression test against stack overflows in the Bonsai.Cont API. *)
-  let computation graph =
+  let computation (local_ graph) =
     Fn.apply_n_times
       ~n:1_000
       (fun x ->
@@ -30,7 +30,7 @@ let%expect_test "stack overflow regression test: long chain of subs" =
 
 let run_long_chain_test ~n =
   (* NOTE: This expect test is a regression test against stack overflows in the Bonsai.Cont API. *)
-  let computation _graph =
+  let computation (local_ _graph) =
     let value = ref (Import.opaque_const_value 0) in
     (* At values higher than this, _Incremental_ starts stack overflowing.
        A problem for another day... *)

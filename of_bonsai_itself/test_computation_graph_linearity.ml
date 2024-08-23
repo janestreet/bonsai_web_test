@@ -8,7 +8,7 @@ module Bonsai_cont = struct
 end
 
 let sexp_of_computation
-  : type a. ?optimize:bool -> (Bonsai_cont.graph -> a Bonsai_cont.t) -> Sexp.t
+  : type a. ?optimize:bool -> (local_ Bonsai_cont.graph -> a Bonsai_cont.t) -> Sexp.t
   =
   fun ?(optimize = true) c ->
   Bonsai_cont.Private.top_level_handle c
