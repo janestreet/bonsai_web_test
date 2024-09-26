@@ -7,7 +7,10 @@ module Result_spec : sig
     include Bonsai_test.Result_spec
   end
 
-  (** [filter_printed_attributes] controls which attributes on a Node will get
+  (** Construct a result spec for printing vdoms in tests.
+
+
+     [filter_printed_attributes] controls which attributes on a Node will get
       printed analyzing the string name of the attribute. Style properties
       correspond to their property name prefixed with "style.". For example, to
       filter out the "display" CSS property, you should return false for

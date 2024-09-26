@@ -1,0 +1,5 @@
+(library
+ (name bonsai_web_test_jsdom)
+ (libraries async_js async_kernel bonsai_web core js_of_ocaml jsdom_test)
+ (preprocess
+  (pps ppx_jane js_of_ocaml-ppx ppx_quick_test ppx_html bonsai.ppx_bonsai)))

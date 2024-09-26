@@ -382,7 +382,7 @@ module Experimental = struct
       let component (_ : unit Value.t) =
         let open Bonsai.Let_syntax in
         let%sub result = computation in
-        let%arr result = result in
+        let%arr result in
         result, R.to_vdom result, lazy (R.view result), R.incoming result
       in
       let time_source = Bonsai.Time_source.create ~start:start_time in
@@ -439,8 +439,8 @@ module Experimental = struct
       let _, vdom, after, _ = Driver.result driver in
       Driver.store_view driver after;
       (match Bonsai_web.am_running_how with
-       | `Browser | `Browser_benchmark -> perform_update vdom
-       | `Node | `Node_benchmark | `Node_test -> ());
+       | `Browser | `Browser_test | `Browser_benchmark -> perform_update vdom
+       | `Node | `Node_benchmark | `Node_test | `Node_jsdom_test -> ());
       f before after;
       Driver.trigger_lifecycles driver
     ;;

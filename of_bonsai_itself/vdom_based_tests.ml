@@ -26,16 +26,15 @@ let%expect_test "recursive component" =
           let%sub child =
             (Bonsai.lazy_ [@alert "-deprecated"]) (lazy (tree child path))
           in
-          let%arr child = child
-          and index = index in
+          let%arr child and index in
           Vdom.Node.div [ Vdom.Node.textf "%d" index; child ])
     in
     let%sub state =
       Bonsai.state 0 ~sexp_of_model:[%sexp_of: Int.t] ~equal:[%equal: Int.t]
     in
-    let%arr children = children
-    and label = label
-    and path = path
+    let%arr children
+    and label
+    and path
     and state, set_state = state in
     let path_text =
       String.concat ~sep:"_" ("path" :: List.rev_map path ~f:Int.to_string)

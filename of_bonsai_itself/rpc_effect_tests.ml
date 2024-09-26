@@ -416,8 +416,7 @@ let%expect_test "multiple polling_state_rpc" =
         let%sub dispatcher =
           Rpc_effect.Polling_state_rpc.dispatcher polling_state_rpc ~where_to_connect:Self
         in
-        let%arr dispatcher = dispatcher
-        and key = key in
+        let%arr dispatcher and key in
         dispatcher key)
   in
   let handle =
@@ -562,7 +561,12 @@ let%expect_test "disconnect and re-connect persistent_connection" =
       ~address:(module Unit)
       (fun () -> Deferred.Or_error.return ())
   in
-  let connector = Rpc_effect.Connector.persistent_connection (module Conn) connection in
+  let connector =
+    Rpc_effect.Connector.persistent_connection
+      ~on_conn_failure:Retry_until_success
+      (module Conn)
+      connection
+  in
   let computation = Rpc_effect.Rpc.babel_dispatcher babel_rpc_b ~where_to_connect:Self in
   let handle =
     Handle.create
@@ -603,7 +607,12 @@ let%expect_test "disconnect and re-connect with polling_state_rpc" =
       ~address:(module Unit)
       (fun () -> Deferred.Or_error.return ())
   in
-  let connector = Rpc_effect.Connector.persistent_connection (module Conn) connection in
+  let connector =
+    Rpc_effect.Connector.persistent_connection
+      ~on_conn_failure:Retry_until_success
+      (module Conn)
+      connection
+  in
   let computation =
     Rpc_effect.Polling_state_rpc.dispatcher polling_state_rpc ~where_to_connect:Self
   in
@@ -634,99 +643,103 @@ let%expect_test "disconnect and re-connect with polling_state_rpc" =
   return ()
 ;;
 
-let%test_module "versioned polling state rpc" =
-  (module struct
-    module Response = struct
-      type t = string [@@deriving bin_io]
+module Versioned_psrpcs = struct
+  module Response = struct
+    type t = string [@@deriving bin_io]
 
-      module Update = String
+    module Update = String
+
+    let diffs ~from:_ ~to_ = to_
+    let update _ update = update
+  end
+
+  (* this module contains the _old_ implementation of V1 without the conversion functor *)
+  module V1_old = struct
+    module Response = struct
+      include Int.Stable.V1
+      module Update = Int.Stable.V1
 
       let diffs ~from:_ ~to_ = to_
-      let update _ update = update
+      let update _prev next = next
     end
 
-    (* this module contains the _old_ implementation of V1 without the conversion functor *)
-    module V1_old = struct
-      module Response = struct
-        include Int.Stable.V1
-        module Update = Int.Stable.V1
+    let rpc =
+      Polling_state_rpc.create
+        ~name:"foo"
+        ~version:1
+        ~query_equal:[%equal: int]
+        ~bin_query:bin_int
+        (module Response)
+    ;;
+  end
 
-        let diffs ~from:_ ~to_ = to_
-        let update _prev next = next
-      end
+  module V1 = struct
+    module Response =
+      Versioned_polling_state_rpc.Make_stable_response
+        (Response)
+        (V1_old.Response (* This is modeling a V1 that used ints instead of strings *))
+        (struct
+          let to_stable = Int.of_string
+          let of_stable = Int.to_string
 
-      let rpc =
-        Polling_state_rpc.create
-          ~name:"foo"
-          ~version:1
-          ~query_equal:[%equal: int]
-          ~bin_query:bin_int
-          (module Response)
-      ;;
-    end
-
-    module V1 = struct
-      module Response =
-        Versioned_polling_state_rpc.Make_stable_response
-          (Response)
-          (V1_old.Response (* This is modeling a V1 that used ints instead of strings *))
-          (struct
+          module Update = struct
             let to_stable = Int.of_string
             let of_stable = Int.to_string
+          end
+        end)
 
-            module Update = struct
-              let to_stable = Int.of_string
-              let of_stable = Int.to_string
-            end
-          end)
-
-      let rpc =
-        Polling_state_rpc.create
-          ~name:"foo"
-          ~version:1
-          ~query_equal:[%equal: int]
-          ~bin_query:bin_int
-          (module Response)
-      ;;
-    end
-
-    module V2 = struct
-      let rpc =
-        Polling_state_rpc.create
-          ~name:"foo"
-          ~version:2
-          ~query_equal:[%equal: int]
-          ~bin_query:bin_int
-          (module Response)
-      ;;
-    end
-
-    module Erased_implementation = struct
-      type t =
-        | T :
-            { rpc : (int, 'result) Polling_state_rpc.t
-            ; latest_result_of_int : int -> 'result
-            }
-            -> t
-    end
-
-    let implementations rpcs =
-      let implement (Erased_implementation.T { rpc; latest_result_of_int }) =
-        Polling_state_rpc.implement
-          ~on_client_and_server_out_of_sync:print_s
-          rpc
-          (fun (_ : Rpc.Connection.t) query ->
-             let rpc =
-               Polling_state_rpc.babel_generic_rpc rpc |> Babel.Generic_rpc.description
-             in
-             print_s [%message (rpc : Rpc.Description.t)];
-             latest_result_of_int (query * 2) |> Deferred.return)
-      in
-      List.map rpcs ~f:implement
+    let rpc =
+      Polling_state_rpc.create
+        ~name:"foo"
+        ~version:1
+        ~query_equal:[%equal: int]
+        ~bin_query:bin_int
+        (module Response)
     ;;
+  end
 
-    let v1_caller = Versioned_polling_state_rpc.Client.create_caller V1.rpc
-    let v2_caller = Versioned_polling_state_rpc.Client.create_caller V2.rpc
+  module V2 = struct
+    let rpc =
+      Polling_state_rpc.create
+        ~name:"foo"
+        ~version:2
+        ~query_equal:[%equal: int]
+        ~bin_query:bin_int
+        (module Response)
+    ;;
+  end
+
+  module Erased_implementation = struct
+    type t =
+      | T :
+          { rpc : (int, 'result) Polling_state_rpc.t
+          ; latest_result_of_int : int -> 'result
+          }
+          -> t
+  end
+
+  let implementations rpcs =
+    let implement (Erased_implementation.T { rpc; latest_result_of_int }) =
+      Polling_state_rpc.implement
+        ~on_client_and_server_out_of_sync:print_s
+        rpc
+        (fun (_ : Rpc.Connection.t) query ->
+           let rpc =
+             Polling_state_rpc.babel_generic_rpc rpc |> Babel.Generic_rpc.description
+           in
+           print_s [%message (rpc : Rpc.Description.t)];
+           latest_result_of_int (query * 2) |> Deferred.return)
+    in
+    List.map rpcs ~f:implement
+  ;;
+
+  let v1_caller = Versioned_polling_state_rpc.Client.create_caller V1.rpc
+  let v2_caller = Versioned_polling_state_rpc.Client.create_caller V2.rpc
+end
+
+let%test_module "versioned polling state rpc" =
+  (module struct
+    open Versioned_psrpcs
 
     module Spec = struct
       type t = { dispatch : int -> string Or_error.t Effect.t }
@@ -773,7 +786,7 @@ let%test_module "versioned polling state rpc" =
             Bonsai.const
               (Effect.of_sync_fun (fun (_ : int) -> Ok "fake rpc implementation"))
         in
-        let%arr dispatch = dispatch in
+        let%arr dispatch in
         { Spec.dispatch }
       in
       let handle =
@@ -1062,7 +1075,10 @@ let%test_module "Status.state" =
           (fun () -> Deferred.Or_error.return ())
       in
       let connector =
-        Rpc_effect.Connector.persistent_connection (module Conn) connection
+        Rpc_effect.Connector.persistent_connection
+          ~on_conn_failure:Retry_until_success
+          (module Conn)
+          connection
       in
       connection, connector
     ;;
@@ -1246,6 +1262,237 @@ let async_recompute_view handle =
 let async_show_diff handle =
   Handle.show_diff ~diff_context:0 handle;
   Async_kernel_scheduler.yield_until_no_jobs_remain ()
+;;
+
+let%test_module "persistent connection failure to connect" =
+  (module struct
+    module Conn = Persistent_connection_kernel.Make (struct
+        type t = Rpc.Connection.t
+
+        let close t = Rpc.Connection.close t
+        let is_closed t = Rpc.Connection.is_closed t
+        let close_finished t = Rpc.Connection.close_finished t
+      end)
+
+    let build_handle ~on_conn_failure result_spec computation =
+      let async_time_source = Time_source.create ~now:Time_ns.epoch () in
+      let connection =
+        Conn.create
+          ~time_source:(Time_source.read_only async_time_source)
+          ~server_name:"test_server"
+          ~connect:(fun () ->
+            Deferred.Or_error.error_string "Deliberately refusing to connect for tests.")
+          ~address:(module Unit)
+          (fun () -> Deferred.Or_error.return ())
+      in
+      let connector =
+        Rpc_effect.Connector.persistent_connection
+          ~on_conn_failure
+          (module Conn)
+          connection
+      in
+      let handle =
+        Handle.create result_spec ~connectors:(fun _ -> connector) computation
+      in
+      handle, connection, async_time_source
+    ;;
+
+    (* The choice of [Self] doesn't matter here, because we pass `~connectors` to
+       `Handle.create`, overriding all connection establishment logic. *)
+    let where_to_connect = Rpc_effect.Where_to_connect.Self
+
+    let%expect_test "regular dispatcher, on_conn_failure:Retry_until_success" =
+      let computation = Rpc_effect.Rpc.dispatcher rpc_a ~where_to_connect in
+      let handle, connection, _ =
+        build_handle
+          ~on_conn_failure:Retry_until_success
+          (module Int_to_int_or_error)
+          computation
+      in
+      let%bind () = async_do_actions handle [ 0 ] in
+      [%expect {| |}];
+      print_s [%message (Conn.current_connection connection : Rpc.Connection.t option)];
+      [%expect {| ("Conn.current_connection connection" ()) |}];
+      return ()
+    ;;
+
+    let%expect_test "regular dispatcher, on_conn_failure:Surface_error_to_rpc" =
+      let computation = Rpc_effect.Rpc.dispatcher rpc_a ~where_to_connect in
+      let handle, connection, _ =
+        build_handle
+          ~on_conn_failure:Surface_error_to_rpc
+          (module Int_to_int_or_error)
+          computation
+      in
+      let%bind () = async_do_actions handle [ 0 ] in
+      [%expect {| (Error "Deliberately refusing to connect for tests.") |}];
+      print_s [%message (Conn.current_connection connection : Rpc.Connection.t option)];
+      [%expect {| ("Conn.current_connection connection" ()) |}];
+      return ()
+    ;;
+
+    let%expect_test "babel dispatcher, on_conn_failure:Retry_until_success" =
+      let computation = Rpc_effect.Rpc.babel_dispatcher babel_rpc_a ~where_to_connect in
+      let handle, connection, _ =
+        build_handle
+          ~on_conn_failure:Retry_until_success
+          (module Int_to_int_or_error)
+          computation
+      in
+      let%bind () = async_do_actions handle [ 0 ] in
+      [%expect {| |}];
+      print_s [%message (Conn.current_connection connection : Rpc.Connection.t option)];
+      [%expect {| ("Conn.current_connection connection" ()) |}];
+      return ()
+    ;;
+
+    let%expect_test "babel dispatcher, on_conn_failure:Surface_error_to_rpc" =
+      let computation = Rpc_effect.Rpc.babel_dispatcher babel_rpc_a ~where_to_connect in
+      let handle, connection, _ =
+        build_handle
+          ~on_conn_failure:Surface_error_to_rpc
+          (module Int_to_int_or_error)
+          computation
+      in
+      let%bind () = async_do_actions handle [ 0 ] in
+      [%expect {| (Error "Deliberately refusing to connect for tests.") |}];
+      print_s [%message (Conn.current_connection connection : Rpc.Connection.t option)];
+      [%expect {| ("Conn.current_connection connection" ()) |}];
+      return ()
+    ;;
+
+    let poll_computation =
+      let%sub.Bonsai rpc =
+        Rpc_effect.Polling_state_rpc.poll
+          polling_state_rpc
+          ~equal_query:Int.equal
+          ~every:(Time_ns.Span.of_sec 1.)
+          (Value.return 0)
+          ~where_to_connect
+      in
+      let%arr.Bonsai rpc in
+      Rpc_effect.Poll_result.sexp_of_t sexp_of_int sexp_of_int rpc
+    ;;
+
+    let%expect_test "regular poll, on_conn_failure:Retry_until_success" =
+      let handle, connection, time_source =
+        build_handle
+          ~on_conn_failure:Retry_until_success
+          (Result_spec.sexp (module Sexp))
+          poll_computation
+      in
+      (* We only dispatch the query after [show] is called for the first time. *)
+      Handle.show handle;
+      let%bind () =
+        Time_source.advance_by_alarms_by time_source (Time_ns.Span.of_sec 0.1)
+      in
+      Handle.show handle;
+      [%expect
+        {|
+        ((last_ok_response ()) (last_error ()) (inflight_query ())
+         (refresh <opaque>))
+        ((last_ok_response ()) (last_error ()) (inflight_query (0))
+         (refresh <opaque>))
+        |}];
+      print_s [%message (Conn.current_connection connection : Rpc.Connection.t option)];
+      [%expect {| ("Conn.current_connection connection" ()) |}];
+      return ()
+    ;;
+
+    let%expect_test "regular poll, on_conn_failure:Surface_error_to_rpc" =
+      let handle, connection, time_source =
+        build_handle
+          ~on_conn_failure:Surface_error_to_rpc
+          (Result_spec.sexp (module Sexp))
+          poll_computation
+      in
+      (* We only dispatch the query after [show] is called for the first time. *)
+      Handle.show handle;
+      let%bind () =
+        Time_source.advance_by_alarms_by time_source (Time_ns.Span.of_sec 0.1)
+      in
+      Handle.show handle;
+      [%expect
+        {|
+        ((last_ok_response ()) (last_error ()) (inflight_query ())
+         (refresh <opaque>))
+        ((last_ok_response ())
+         (last_error ((0 "Deliberately refusing to connect for tests.")))
+         (inflight_query ()) (refresh <opaque>))
+        |}];
+      print_s [%message (Conn.current_connection connection : Rpc.Connection.t option)];
+      [%expect {| ("Conn.current_connection connection" ()) |}];
+      return ()
+    ;;
+
+    let babel_poll_computation () =
+      let caller =
+        Babel.Caller.of_list_decreasing_preference
+          Versioned_psrpcs.[ v2_caller; v1_caller ]
+      in
+      let%sub.Bonsai rpc =
+        Rpc_effect.Polling_state_rpc.babel_poll
+          caller
+          ~equal_query:Int.equal
+          ~every:(Time_ns.Span.of_sec 1.)
+          (Value.return 0)
+          ~where_to_connect
+      in
+      let%arr.Bonsai rpc in
+      Rpc_effect.Poll_result.sexp_of_t sexp_of_int sexp_of_string rpc
+    ;;
+
+    let%expect_test "babel poll, on_conn_failure:Retry_until_success" =
+      let handle, connection, time_source =
+        build_handle
+          ~on_conn_failure:Retry_until_success
+          (Result_spec.sexp (module Sexp))
+          (babel_poll_computation ())
+      in
+      (* We only dispatch the query after [show] is called for the first time. *)
+      Handle.show handle;
+      let%bind () =
+        Time_source.advance_by_alarms_by time_source (Time_ns.Span.of_sec 0.1)
+      in
+      Handle.show handle;
+      [%expect
+        {|
+        ((last_ok_response ()) (last_error ()) (inflight_query ())
+         (refresh <opaque>))
+        ((last_ok_response ()) (last_error ()) (inflight_query (0))
+         (refresh <opaque>))
+        |}];
+      print_s [%message (Conn.current_connection connection : Rpc.Connection.t option)];
+      [%expect {| ("Conn.current_connection connection" ()) |}];
+      return ()
+    ;;
+
+    let%expect_test "babel poll, on_conn_failure:Surface_error_to_rpc" =
+      let handle, connection, time_source =
+        build_handle
+          ~on_conn_failure:Surface_error_to_rpc
+          (Result_spec.sexp (module Sexp))
+          (babel_poll_computation ())
+      in
+      (* We only dispatch the query after [show] is called for the first time. *)
+      Handle.show handle;
+      let%bind () =
+        Time_source.advance_by_alarms_by time_source (Time_ns.Span.of_sec 0.1)
+      in
+      Handle.show handle;
+      [%expect
+        {|
+        ((last_ok_response ()) (last_error ()) (inflight_query ())
+         (refresh <opaque>))
+        ((last_ok_response ())
+         (last_error ((0 "Deliberately refusing to connect for tests.")))
+         (inflight_query ()) (refresh <opaque>))
+        |}];
+      print_s [%message (Conn.current_connection connection : Rpc.Connection.t option)];
+      [%expect {| ("Conn.current_connection connection" ()) |}];
+      return ()
+    ;;
+  end)
 ;;
 
 let%test_module "Polling_state_rpc.poll" =
@@ -2669,14 +2916,14 @@ let%test_module "multi-poller" =
       let%sub () =
         Bonsai.Edge.lifecycle
           ~on_activate:
-            (let%map input = input in
+            (let%map input in
              Effect.print_s [%sexp "start", (input : int)])
           ~on_deactivate:
-            (let%map input = input in
+            (let%map input in
              Effect.print_s [%sexp "stop", (input : int)])
           ()
       in
-      let%arr input = input in
+      let%arr input in
       { Rpc_effect.Poll_result.last_ok_response = Some (input, "hello")
       ; last_error = None
       ; inflight_query = None
@@ -2696,7 +2943,7 @@ let%test_module "multi-poller" =
             poller
             (Value.return 5)
         in
-        let%arr lookup = lookup in
+        let%arr lookup in
         [%message "" ~_:(lookup.last_ok_response : (int * string) option)]
       in
       let handle =
@@ -2735,8 +2982,7 @@ let%test_module "multi-poller" =
             poller
             (Value.return 5)
         in
-        let%arr a = a
-        and b = b in
+        let%arr a and b in
         [%message
           ""
             ~a:(a.last_ok_response : (int * string) option)
@@ -2778,8 +3024,7 @@ let%test_module "multi-poller" =
             poller
             (Value.return 10)
         in
-        let%arr a = a
-        and b = b in
+        let%arr a and b in
         [%message
           ""
             ~a:(a.last_ok_response : (int * string) option)
@@ -2825,7 +3070,7 @@ let%test_module "multi-poller" =
               ; refresh = Effect.Ignore
               }
         in
-        let%arr lookup = lookup in
+        let%arr lookup in
         [%message "" ~_:(lookup.last_ok_response : (int * string) option)]
       in
       let handle =
@@ -2883,8 +3128,7 @@ let%test_module "multi-poller" =
               ; refresh = Effect.Ignore
               }
         in
-        let%arr a = a
-        and b = b in
+        let%arr a and b in
         [%message
           ""
             ~a:(a.last_ok_response : (int * string) option)
@@ -2939,8 +3183,7 @@ let%test_module "multi-poller" =
               ; refresh = Effect.Ignore
               }
         in
-        let%arr a = a
-        and b = b in
+        let%arr a and b in
         [%message
           ""
             ~a:(a.last_ok_response : (int * string) option)
@@ -3045,7 +3288,7 @@ let%test_module "Rpc.poll_until_condition_met" =
         ~sexp_of_response:[%sexp_of: int]
         ~equal_query:[%equal: int]
         ~condition:
-          (let%arr n = n in
+          (let%arr n in
            fun response -> if response >= n then `Stop_polling else `Continue)
         ~equal_response:[%equal: int]
         rpc
