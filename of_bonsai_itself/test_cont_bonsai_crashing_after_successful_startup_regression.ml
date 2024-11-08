@@ -25,28 +25,27 @@ let create_handle (computation : String.Set.t Computation.t) : handle =
   { handle; set_state }
 ;;
 
-let%test_module "Demonstrating hypothetical crash after successful startup." =
-  (* NOTE: We have not yet observed this on real apps that have migrated to cont and is
+module%test [@name "Demonstrating hypothetical crash after successful startup."] _ =
+(* NOTE: We have not yet observed this on real apps that have migrated to cont and is
      solely a hypothetical. *)
-  (module struct
-    let%expect_test "Proc Syntax" =
-      let { handle; set_state } = create_handle (For_proc.basic ~height:10 ~width:7) in
-      Handle.show handle;
-      [%expect {| () |}];
-      set_state Big_computation_is_active;
-      Handle.show handle;
-      [%expect {| (13 15 17 19 21 23 25 27 29 31 31) |}]
-    ;;
+struct
+  let%expect_test "Proc Syntax" =
+    let { handle; set_state } = create_handle (For_proc.basic ~height:10 ~width:7) in
+    Handle.show handle;
+    [%expect {| () |}];
+    set_state Big_computation_is_active;
+    Handle.show handle;
+    [%expect {| (13 15 17 19 21 23 25 27 29 31 31) |}]
+  ;;
 
-    let%expect_test "Cont" =
-      let { handle; set_state } = create_handle (For_cont.basic ~height:10 ~width:7) in
-      Handle.show handle;
-      [%expect {| () |}];
-      set_state Big_computation_is_active;
-      (* NOTE: This shows that an app can crash at runtime after having started
+  let%expect_test "Cont" =
+    let { handle; set_state } = create_handle (For_cont.basic ~height:10 ~width:7) in
+    Handle.show handle;
+    [%expect {| () |}];
+    set_state Big_computation_is_active;
+    (* NOTE: This shows that an app can crash at runtime after having started
          successfully. *)
-      Handle.show handle;
-      [%expect {| (17 17 19 19 17 19 19 17 17 19 19) |}]
-    ;;
-  end)
-;;
+    Handle.show handle;
+    [%expect {| (17 17 19 19 17 19 19 17 17 19 19) |}]
+  ;;
+end

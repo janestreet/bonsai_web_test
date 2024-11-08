@@ -439,8 +439,8 @@ module Experimental = struct
       let _, vdom, after, _ = Driver.result driver in
       Driver.store_view driver after;
       (match Bonsai_web.am_running_how with
-       | `Browser | `Browser_benchmark -> perform_update vdom
-       | `Node | `Node_benchmark | `Node_test -> ());
+       | `Browser | `Browser_test | `Browser_benchmark -> perform_update vdom
+       | `Node | `Node_benchmark | `Node_test | `Node_jsdom_test -> ());
       f before after;
       Driver.trigger_lifecycles driver
     ;;
