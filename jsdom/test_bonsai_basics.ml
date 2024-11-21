@@ -7,7 +7,7 @@ let () = Async_js.init ()
 let hello_world _graph = Bonsai.return {%html|Hello!|}
 
 let%expect_test "Constant hello world" =
-  Bonsai_web.Start.start hello_world;
+  Bonsai_web.Start.start hello_world ~enable_bonsai_telemetry:Disabled;
   let%bind.Deferred () = run_animation_frame () in
   print_dom ~with_visible_whitespace:false ();
   [%expect
@@ -50,7 +50,7 @@ let counter graph =
 ;;
 
 let%expect_test "Counter w/ state" =
-  Bonsai_web.Start.start counter;
+  Bonsai_web.Start.start counter ~enable_bonsai_telemetry:Disabled;
   let%bind.Deferred () = run_animation_frame () in
   print_dom ~with_visible_whitespace:false ();
   [%expect
@@ -153,7 +153,7 @@ let lifecycle_effects graph =
 ;;
 
 let%expect_test "Lifecycle effects" =
-  Bonsai_web.Start.start lifecycle_effects;
+  Bonsai_web.Start.start lifecycle_effects ~enable_bonsai_telemetry:Disabled;
   let%bind.Deferred () = run_animation_frame () in
   print_dom ~with_visible_whitespace:false ();
   (* The first frame is run synchronously on startup, so the first [run_animation_frame]

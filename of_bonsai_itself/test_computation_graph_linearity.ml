@@ -1,21 +1,17 @@
 open! Core
+module Bonsai_private = Bonsai.Private
+open Bonsai
 open Bonsai_web_test
 open Bonsai_test_shared_for_testing_bonsai.Big_computation_regression_util
 
-module Bonsai_cont = struct
-  include Bonsai.Cont
-  module Private = Bonsai.Private
-end
-
-let sexp_of_computation
-  : type a. ?optimize:bool -> (Bonsai_cont.graph -> a Bonsai_cont.t) -> Sexp.t
+let sexp_of_computation : type a. ?optimize:bool -> (Bonsai.graph -> a Bonsai.t) -> Sexp.t
   =
   fun ?(optimize = true) c ->
-  Bonsai_cont.Private.top_level_handle c
-  |> (if optimize then Bonsai_cont.Private.pre_process else Fn.id)
-  |> Bonsai_cont.Private.Skeleton.Computation.of_computation
-  |> Bonsai_cont.Private.Skeleton.Computation.sanitize_for_testing
-  |> Bonsai_cont.Private.Skeleton.Computation.minimal_sexp_of_t
+  Bonsai_private.top_level_handle c
+  |> (if optimize then Bonsai_private.pre_process else Fn.id)
+  |> Bonsai_private.Skeleton.Computation.of_computation
+  |> Bonsai_private.Skeleton.Computation.sanitize_for_testing
+  |> Bonsai_private.Skeleton.Computation.minimal_sexp_of_t
 ;;
 
 module%test [@name "Comparing graph structure."] _ = struct

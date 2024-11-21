@@ -8,7 +8,7 @@ let () = Async_js.init ()
 let hello_world _graph = Bonsai.return {%html|Hello!|}
 
 let%expect_test "JSDom tests aren't in quirks mode" =
-  Bonsai_web.Start.start hello_world;
+  Bonsai_web.Start.start hello_world ~enable_bonsai_telemetry:Disabled;
   let%bind.Deferred () = run_animation_frame () in
   print_dom ~with_visible_whitespace:false ();
   [%expect
