@@ -1,31 +1,23 @@
 open! Core
 open! Bonsai_web
 open Js_of_ocaml
-open Async_kernel
-open Jsdom_test
+open Jsdom
+module Handle = Handle_experimental
 
-let () = Async_js.init ()
 let hello_world (local_ _graph) = Bonsai.return {%html|Hello!|}
 
 let%expect_test "JSDom tests aren't in quirks mode" =
-  Bonsai_web.Start.start hello_world ~enable_bonsai_telemetry:Disabled;
-  let%bind.Deferred () = run_animation_frame () in
-  print_dom ~with_visible_whitespace:false ();
+  let%bind.With handle = Handle.with_ ~get_vdom:Fn.id hello_world in
+  Handle.print_dom handle;
   [%expect
     {|
-    | <html>
-    |   <head>
-    |
-    |     <meta charset="UTF-8">
-    |
-    |     </head>
-    |
-    |     <body>
-    |               Hello!
-    |     </body>
-    |   </html>
+    <html>
+      <head>
+        <meta charset="UTF-8"> </meta>
+      </head>
+      <body> Hello! </body>
+    </html>
     |}];
   Js.Unsafe.get Dom_html.document "compatMode" |> Js.to_string |> print_endline;
-  [%expect {| CSS1Compat |}];
-  return ()
+  [%expect {| CSS1Compat |}]
 ;;

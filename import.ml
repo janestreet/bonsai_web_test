@@ -1,6 +1,6 @@
 open! Core
 include Virtual_dom
-include Bonsai_web.Proc
+include Bonsai_web
 open Bonsai.Let_syntax
 
 module Effect = struct
@@ -13,6 +13,9 @@ end
 module Driver = Bonsai_test.Arrow.Driver
 include Expect_test_helpers_core
 
-let opaque_const x = Bonsai.read (Bonsai.Var.value (Bonsai.Var.create x))
-let opaque_const_value x = Bonsai.Var.value (Bonsai.Var.create x)
-let opaque_computation c = if%sub opaque_const_value true then c else assert false
+let opaque_const x _ = Bonsai.Expert.Var.value (Bonsai.Expert.Var.create x)
+let opaque_const_value x = Bonsai.Expert.Var.value (Bonsai.Expert.Var.create x)
+
+let opaque_computation c (local_ graph) =
+  if%sub opaque_const_value true then c graph else assert false
+;;

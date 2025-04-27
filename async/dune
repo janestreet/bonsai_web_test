@@ -1,6 +1,7 @@
 (library
  (name bonsai_web_test_async)
  (public_name bonsai_web_test.async)
- (libraries async_js.async_test base bonsai bonsai_web bonsai_web_test)
+ (libraries async_js.async_test base bonsai bonsai.proc bonsai_web
+   bonsai_web_test)
  (preprocess
   (pps ppx_jane)))

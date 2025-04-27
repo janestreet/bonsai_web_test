@@ -1,36 +1,29 @@
 open! Core
 open! Bonsai_web
-open Async_kernel
-open Jsdom_test
+open Jsdom
+module Handle = Handle_experimental
 
-let () = Async_js.init ()
 let hello_world (local_ _graph) = Bonsai.return {%html|Hello!|}
 
 let%expect_test "Constant hello world" =
-  Bonsai_web.Start.start hello_world ~enable_bonsai_telemetry:Disabled;
-  let%bind.Deferred () = run_animation_frame () in
-  print_dom ~with_visible_whitespace:false ();
+  let%bind.With handle = Handle.with_ ~get_vdom:Fn.id hello_world in
+  Handle.one_frame handle;
+  Handle.print_dom handle;
   [%expect
     {|
-    | <html>
-    |   <head>
-    |
-    |     <meta charset="UTF-8">
-    |
-    |     </head>
-    |
-    |     <body>
-    |               Hello!
-    |     </body>
-    |   </html>
-    |}];
-  return ()
+    <html>
+      <head>
+        <meta charset="UTF-8"> </meta>
+      </head>
+      <body> Hello! </body>
+    </html>
+    |}]
 ;;
 
 let counter (local_ graph) =
   let open Bonsai.Let_syntax in
   let count, inject =
-    Bonsai.state_machine0
+    Bonsai.state_machine
       ~default_model:0
       ~apply_action:(fun _ctx count -> function
         | `Incr -> count + 1
@@ -39,79 +32,59 @@ let counter (local_ graph) =
   in
   let%arr count and inject in
   {%html|
-      <div>
-        <button id="incr" on_click=%{fun _ -> print_endline "Hello!"; inject `Incr}>
-          -
-        </button>
-        %{count#Int}
-        <button id="decr" on_click=%{fun _ -> inject `Incr}>+</button>
-      </div>
-    |}
+    <div>
+      <button id="incr" on_click=%{fun _ -> print_endline "Hello!"; inject `Incr}>
+        -
+      </button>
+      %{count#Int}
+      <button id="decr" on_click=%{fun _ -> inject `Incr}>+</button>
+    </div>
+  |}
 ;;
 
 let%expect_test "Counter w/ state" =
-  Bonsai_web.Start.start counter ~enable_bonsai_telemetry:Disabled;
-  let%bind.Deferred () = run_animation_frame () in
-  print_dom ~with_visible_whitespace:false ();
+  let%bind.With handle = Handle.with_ ~get_vdom:Fn.id counter in
+  Handle.print_dom handle;
   [%expect
     {|
-    | <html>
-    |   <head>
-    |
-    |     <meta charset="UTF-8">
-    |
-    |     </head>
-    |
-    |     <body>
-    |
-    |       <div tabindex="0" class="private-app-root-for-inertness" style="outline: none;">
-    |         <button id="incr">
-    |            -
-    |         </button>
-    |         0
-    |         <button id="decr">
-    |           +
-    |         </button>
-    |       </div>
-    |
-    |     </body>
-    |   </html>
+    <html>
+      <head>
+        <meta charset="UTF-8"> </meta>
+      </head>
+      <body>
+        <div tabindex="0" style="outline: none;">
+          <button id="incr">  -  </button>
+          0
+          <button id="decr"> + </button>
+        </div>
+      </body>
+    </html>
     |}];
-  dispatch_event ~selector:"#incr" ~event_name:"click" ();
-  let%bind.Deferred () = run_animation_frame () in
-  print_dom ~with_visible_whitespace:false ();
+  Handle.click_on handle ~selector:"#incr";
+  Handle.one_frame handle;
+  Handle.print_dom handle;
   [%expect
     {|
     Hello!
-    | <html>
-    |   <head>
-    |
-    |     <meta charset="UTF-8">
-    |
-    |     </head>
-    |
-    |     <body>
-    |
-    |       <div tabindex="0" class="private-app-root-for-inertness" style="outline: none;">
-    |         <button id="incr">
-    |            -
-    |         </button>
-    |         1
-    |         <button id="decr">
-    |           +
-    |         </button>
-    |       </div>
-    |
-    |     </body>
-    |   </html>
-    |}];
-  return ()
+    <html>
+      <head>
+        <meta charset="UTF-8"> </meta>
+      </head>
+      <body>
+        <div tabindex="0" style="outline: none;">
+          <button id="incr">  -  </button>
+          1
+          <button id="decr"> + </button>
+        </div>
+      </body>
+    </html>
+    |}]
 ;;
 
 let lifecycle_effects (local_ graph) =
   let open Bonsai.Let_syntax in
   let which, cycle =
-    Bonsai.state_machine0
+    Bonsai.state_machine
       ~default_model:`A
       ~apply_action:(fun _ctx model () ->
         match model with
@@ -145,121 +118,88 @@ let lifecycle_effects (local_ graph) =
     graph;
   let%arr view and cycle in
   {%html|
-      <div>
-        %{view}
-        <button on_click=%{fun _ -> cycle ()} id="cycle">Cycle</button>
-      </div>
-    |}
+    <div>
+      %{view}
+      <button on_click=%{fun _ -> cycle ()} id="cycle">Cycle</button>
+    </div>
+  |}
 ;;
 
 let%expect_test "Lifecycle effects" =
-  Bonsai_web.Start.start lifecycle_effects ~enable_bonsai_telemetry:Disabled;
-  let%bind.Deferred () = run_animation_frame () in
-  print_dom ~with_visible_whitespace:false ();
-  (* The first frame is run synchronously on startup, so the first [run_animation_frame]
-     call actually resolves after 2 frames have run. *)
+  let%bind.With handle = Handle.with_ ~get_vdom:Fn.id lifecycle_effects in
+  Handle.print_dom handle;
   [%expect
     {|
     ">> Activating A"
     ">> After Display A"
     (">> Change!" (prev ()) (new_ A))
-    ">> After Display A"
-    | <html>
-    |   <head>
-    |
-    |     <meta charset="UTF-8">
-    |
-    |     </head>
-    |
-    |     <body>
-    |
-    |       <div tabindex="0" class="private-app-root-for-inertness" style="outline: none;">
-    |         A! :)
-    |         <button id="cycle">
-    |           Cycle
-    |         </button>
-    |       </div>
-    |
-    |     </body>
-    |   </html>
+    <html>
+      <head>
+        <meta charset="UTF-8"> </meta>
+      </head>
+      <body>
+        <div tabindex="0" style="outline: none;">
+          A! :)
+          <button id="cycle"> Cycle </button>
+        </div>
+      </body>
+    </html>
     |}];
-  dispatch_event ~selector:"#cycle" ~event_name:"click" ();
-  let%bind.Deferred () = run_animation_frame () in
-  print_dom ~with_visible_whitespace:false ();
+  Handle.click_on handle ~selector:"#cycle";
+  Handle.one_frame handle;
+  Handle.print_dom handle;
   [%expect
     {|
     ">> Deactivating A"
     (">> Change!" (prev (A)) (new_ B))
-    | <html>
-    |   <head>
-    |
-    |     <meta charset="UTF-8">
-    |
-    |     </head>
-    |
-    |     <body>
-    |
-    |       <div tabindex="0" class="private-app-root-for-inertness" style="outline: none;">
-    |         B :(
-    |         <button id="cycle">
-    |           Cycle
-    |         </button>
-    |       </div>
-    |
-    |     </body>
-    |   </html>
+    <html>
+      <head>
+        <meta charset="UTF-8"> </meta>
+      </head>
+      <body>
+        <div tabindex="0" style="outline: none;">
+          B :(
+          <button id="cycle"> Cycle </button>
+        </div>
+      </body>
+    </html>
     |}];
-  dispatch_event ~selector:"#cycle" ~event_name:"click" ();
-  let%bind.Deferred () = run_animation_frame () in
-  print_dom ~with_visible_whitespace:false ();
+  Handle.click_on handle ~selector:"#cycle";
+  Handle.one_frame handle;
+  Handle.print_dom handle;
   [%expect
     {|
     (">> Change!" (prev (B)) (new_ C))
-    | <html>
-    |   <head>
-    |
-    |     <meta charset="UTF-8">
-    |
-    |     </head>
-    |
-    |     <body>
-    |
-    |       <div tabindex="0" class="private-app-root-for-inertness" style="outline: none;">
-    |         C!!!!!
-    |         <button id="cycle">
-    |           Cycle
-    |         </button>
-    |       </div>
-    |
-    |     </body>
-    |   </html>
+    <html>
+      <head>
+        <meta charset="UTF-8"> </meta>
+      </head>
+      <body>
+        <div tabindex="0" style="outline: none;">
+          C!!!!!
+          <button id="cycle"> Cycle </button>
+        </div>
+      </body>
+    </html>
     |}];
-  dispatch_event ~selector:"#cycle" ~event_name:"click" ();
-  let%bind.Deferred () = run_animation_frame () in
-  print_dom ~with_visible_whitespace:false ();
+  Handle.click_on handle ~selector:"#cycle";
+  Handle.one_frame handle;
+  Handle.print_dom handle;
   [%expect
     {|
     ">> Activating A"
     ">> After Display A"
     (">> Change!" (prev (C)) (new_ A))
-    | <html>
-    |   <head>
-    |
-    |     <meta charset="UTF-8">
-    |
-    |     </head>
-    |
-    |     <body>
-    |
-    |       <div tabindex="0" class="private-app-root-for-inertness" style="outline: none;">
-    |         A! :)
-    |         <button id="cycle">
-    |           Cycle
-    |         </button>
-    |       </div>
-    |
-    |     </body>
-    |   </html>
-    |}];
-  return ()
+    <html>
+      <head>
+        <meta charset="UTF-8"> </meta>
+      </head>
+      <body>
+        <div tabindex="0" style="outline: none;">
+          A! :)
+          <button id="cycle"> Cycle </button>
+        </div>
+      </body>
+    </html>
+    |}]
 ;;

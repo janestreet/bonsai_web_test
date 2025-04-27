@@ -3,9 +3,9 @@
  (public_name bonsai_web_test.of_bonsai_itself)
  (libraries textutils.ascii_table_kernel async_durable async_js
    async_js.async_test async_kernel async_rpc_kernel babel bonsai
-   bonsai.introspection_protocol bonsai_test
-   bonsai_test.shared_for_testing_bonsai bonsai_web bonsai_web_test
-   bonsai_web_test_async core
+   bonsai.introspection_protocol bonsai.proc bonsai_test
+   bonsai_test.shared_for_testing_bonsai bonsai_web bonsai_web.proc
+   bonsai_web_test bonsai_web_test_async core
    polling_state_rpc.diffable_polling_state_rpc_response
    expect_test_helpers_core.expect_test_helpers_base expect_test_helpers_core
    patdiff.expect_test_patdiff expectable incr_map incremental js_of_ocaml
@@ -14,4 +14,4 @@
    versioned_polling_state_rpc virtual_dom)
  (preprocess
   (pps ppx_jane ppx_pattern_bind bonsai.ppx_bonsai js_of_ocaml-ppx
-    ppx_diff.ppx_diff streamable.ppx)))
+    ppx_diff.ppx_diff ppx_html streamable.ppx)))

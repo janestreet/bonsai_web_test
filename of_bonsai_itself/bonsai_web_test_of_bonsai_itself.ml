@@ -1,0 +1,25 @@
+module Callback_tests = Callback_tests
+module External_event = External_event
+module Flush_async_and_bonsai_tests = Flush_async_and_bonsai_tests
+module Import = Import
+module Overflow_tests = Overflow_tests
+module Rpc_effect_tests = Rpc_effect_tests
+module Test_big_computation_stack_overflows = Test_big_computation_stack_overflows
+
+module Test_big_computation_stack_overflows_no_interdependencies =
+  Test_big_computation_stack_overflows_no_interdependencies
+
+module Test_computation_graph_linearity = Test_computation_graph_linearity
+
+module Test_cont_bonsai_crashing_after_successful_startup_regression =
+  Test_cont_bonsai_crashing_after_successful_startup_regression
+
+module Test_cont_bonsai_stack_overflow_regression =
+  Test_cont_bonsai_stack_overflow_regression
+
+module Test_lifecycle_path_length = Test_lifecycle_path_length
+module Test_node_path_length = Test_node_path_length
+module Test_rpc_effect_introspection_collection = Test_rpc_effect_introspection_collection
+module Test_rpc_effect_introspection_state = Test_rpc_effect_introspection_state
+module Test_test_selector = Test_test_selector
+module Vdom_based_tests = Vdom_based_tests

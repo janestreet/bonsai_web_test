@@ -4,7 +4,7 @@ open Bonsai.Let_syntax
 open Bonsai_web_test
 open Bonsai_test_shared_for_testing_bonsai.Big_computation_regression_util
 
-let overflow_height = 1_000
+let overflow_height = 10_000
 
 let%expect_test ("Bonsai prints an error message if there is a stack overflow in a \
                   computation" [@tags "no-wasm"])

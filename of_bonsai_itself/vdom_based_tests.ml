@@ -1,5 +1,5 @@
 open! Core
-module Bonsai = Bonsai.Proc
+module Bonsai = Bonsai_proc
 open Bonsai.Let_syntax
 open Virtual_dom
 open Bonsai_web_test

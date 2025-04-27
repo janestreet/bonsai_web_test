@@ -1,6 +1,6 @@
 open! Core
 include Virtual_dom
-include Bonsai_web.Proc
+include Bonsai_web_proc
 open Bonsai.Let_syntax
 
 module Effect = struct
