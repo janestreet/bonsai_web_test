@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_web.Proc
+open Bonsai_web_proc
 open Bonsai_web_test
 open Bonsai_test_shared_for_testing_bonsai.Big_computation_regression_util
 

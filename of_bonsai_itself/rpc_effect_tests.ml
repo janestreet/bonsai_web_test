@@ -1,7 +1,7 @@
 open! Core
 open! Async_kernel
 module Bonsai_cont = Bonsai_web
-open Bonsai_web.Proc
+open Bonsai_web_proc
 open Bonsai_web_test
 open Async_rpc_kernel
 open Async_js_test
@@ -100,6 +100,10 @@ module Streamable_plain_rpc = struct
     include Legacy_diffable.Make_streamable_rpc (T) (T.Update.Diff)
   end
 
+  module Query = struct
+    type t = { number_of_elements : int } [@@deriving bin_io, equal, sexp_of]
+  end
+
   include Streamable.Plain_rpc.Make (struct
       let name = "streamable-plain-rpc"
       let version = 0
@@ -107,7 +111,7 @@ module Streamable_plain_rpc = struct
 
       module Response = Response
 
-      type query = unit [@@deriving bin_io]
+      type query = Query.t [@@deriving bin_io]
       type response = Response.t
     end)
 end
@@ -205,33 +209,283 @@ let%expect_test "previous version of a babel RPC" =
   Deferred.unit
 ;;
 
-let%expect_test "streamable plain rpc works on a type that isn't atomic" =
-  let computation =
-    Rpc_effect.Rpc.streamable_dispatcher Streamable_plain_rpc.rpc ~where_to_connect:Self
-  in
-  let handle =
-    Handle.create
-      ~rpc_implementations:
-        [ Streamable.Plain_rpc.implement Streamable_plain_rpc.rpc (fun _ () ->
-            Map.of_alist_exn (module Int) [ 1, 2; 3, 4 ] |> Deferred.Or_error.return)
-        ]
-      (module struct
-        type t = unit -> Streamable_plain_rpc.Response.t Or_error.t Effect.t
-        type incoming = unit
-
-        let view _ = ""
-
-        let incoming f () =
-          let%bind.Effect result = f () in
-          Effect.print_s ([%sexp_of: Streamable_plain_rpc.Response.t Or_error.t] result)
-        ;;
-      end)
-      computation
-  in
-  let%bind.Deferred () = async_do_actions handle [ () ] in
-  [%expect {| (Ok ((1 2) (3 4))) |}];
-  Deferred.unit
+let async_show handle =
+  Handle.show handle;
+  Async_kernel_scheduler.yield_until_no_jobs_remain ()
 ;;
+
+let async_recompute_view handle =
+  Handle.recompute_view handle;
+  Async_kernel_scheduler.yield_until_no_jobs_remain ()
+;;
+
+let async_show_diff handle =
+  Handle.show_diff ~diff_context:0 handle;
+  Async_kernel_scheduler.yield_until_no_jobs_remain ()
+;;
+
+module%test Streamable_rpc = struct
+  let streamable_rpc_implementation () =
+    Streamable.Plain_rpc.implement
+      Streamable_plain_rpc.rpc
+      (fun _ { number_of_elements } ->
+         print_endline "Computing RPC!";
+         if number_of_elements > 41 then failwith "Error: Too many elements!!";
+         Map.of_alist_exn
+           (module Int)
+           (List.init number_of_elements ~f:(fun i -> i * 2, (i * 2) + 1))
+         |> Deferred.Or_error.return)
+  ;;
+
+  let%expect_test "streamable plain rpc works on a type that isn't atomic" =
+    let computation =
+      let open Bonsai.Let_syntax in
+      let%sub dispatcher =
+        Rpc_effect.Rpc.streamable_dispatcher
+          Streamable_plain_rpc.rpc
+          ~where_to_connect:Self
+      in
+      let%arr dispatcher in
+      fun number_of_elements -> dispatcher { number_of_elements }
+    in
+    let handle =
+      Handle.create
+        ~rpc_implementations:[ streamable_rpc_implementation () ]
+        (module struct
+          type t = int -> Streamable_plain_rpc.Response.t Or_error.t Effect.t
+          type incoming = int
+
+          let view _ = ""
+
+          let incoming f n =
+            let%bind.Effect result = f n in
+            Effect.print_s ([%sexp_of: Streamable_plain_rpc.Response.t Or_error.t] result)
+          ;;
+        end)
+        computation
+    in
+    let%bind.Deferred () = async_do_actions handle [ 2 ] in
+    [%expect
+      {|
+      Computing RPC!
+      (Ok ((0 1) (2 3)))
+      |}];
+    Deferred.unit
+  ;;
+
+  open! Streamable_plain_rpc
+
+  module Poller_spec = struct
+    type t =
+      { poll_result : (Query.t, Response.t) Rpc_effect.Poll_result.t
+      ; set_query : int -> unit Effect.t
+      }
+
+    type incoming = int
+
+    let view { poll_result; set_query = _ } =
+      let open struct
+        type ('query, 'response) poll_result_with_less_noisy_sexp =
+              ('query, 'response) Rpc_effect.Poll_result.t =
+          { last_ok_response : ('query * 'response) option [@sexp.option]
+          ; last_error : ('query * Error.t) option [@sexp.option]
+          ; inflight_query : 'query option [@sexp.option]
+          ; refresh : (unit Effect.t[@sexp.opaque])
+          }
+        [@@deriving sexp_of]
+      end in
+      let filter_out_the_refresh_field = function
+        | Sexp.Atom _ as x -> x
+        | List l ->
+          List
+            (List.filter l ~f:(function
+              | Atom _ -> true
+              | List [ Atom "refresh"; _ ] -> false
+              | _ -> true))
+      in
+      let sexp =
+        filter_out_the_refresh_field
+          ([%sexp_of: (Query.t, Response.t) poll_result_with_less_noisy_sexp] poll_result)
+      in
+      Sexp.to_string_hum sexp
+    ;;
+
+    let incoming { poll_result = _; set_query } query = set_query query
+  end
+
+  let streamable_poller ~poll =
+    let open Bonsai.Let_syntax in
+    let%sub query, set_query = Bonsai.state 2 in
+    let%sub query =
+      let%arr query in
+      { Query.number_of_elements = query }
+    in
+    let%sub poll_result = poll query in
+    let%arr poll_result and set_query in
+    { Poller_spec.poll_result; set_query }
+  ;;
+
+  let bisimulate ~f =
+    let normal_poller query =
+      Rpc_effect.Rpc.streamable_poll
+        ~equal_query:[%equal: Query.t]
+        Streamable_plain_rpc.rpc
+        ~where_to_connect:Self
+        ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        query
+    in
+    let until_ok_poller query =
+      Rpc_effect.Rpc.streamable_poll_until_ok
+        ~equal_query:[%equal: Query.t]
+        Streamable_plain_rpc.rpc
+        ~where_to_connect:Self
+        ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
+        query
+    in
+    let%bind () = f normal_poller ~expect_diff:(fun ~normal ~until_ok:_ -> normal ()) in
+    f until_ok_poller ~expect_diff:(fun ~normal:_ ~until_ok -> until_ok ())
+  ;;
+
+  let%expect_test "[Rpc.stremable_{poll,poll_until_ok}]" =
+    bisimulate ~f:(fun poll ~expect_diff ->
+      let computation = streamable_poller ~poll in
+      let handle =
+        Handle.create
+          ~rpc_implementations:[ streamable_rpc_implementation () ]
+          (module Poller_spec)
+          computation
+      in
+      let%bind () = async_recompute_view handle in
+      let%bind () = async_show handle in
+      (* Query changed, so we dispatched another rpc! *)
+      [%expect
+        {|
+        ((inflight_query ((number_of_elements 2))))
+        Computing RPC!
+        |}];
+      let%bind () = async_show handle in
+      [%expect {| ((last_ok_response (((number_of_elements 2)) ((0 1) (2 3))))) |}];
+      (* Query changes, so we see a new RPC being sent! *)
+      let%bind () = async_do_actions handle [ 3 ] in
+      let%bind () = async_recompute_view handle in
+      let%bind () = async_show handle in
+      [%expect
+        {|
+        ((last_ok_response (((number_of_elements 2)) ((0 1) (2 3))))
+         (inflight_query ((number_of_elements 3))))
+        Computing RPC!
+        |}];
+      let%bind () = async_recompute_view handle in
+      let%bind () = async_show handle in
+      [%expect {| ((last_ok_response (((number_of_elements 3)) ((0 1) (2 3) (4 5))))) |}];
+      (* RPC is sent if time advances by the interval even if the query does not change only
+         for the "normal" poller, the "until_ok" poller does not resend. *)
+      Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
+      let%bind () = async_recompute_view handle in
+      let%bind () = async_show handle in
+      expect_diff
+        ~normal:(fun () ->
+          [%expect
+            {|
+            ((last_ok_response (((number_of_elements 3)) ((0 1) (2 3) (4 5))))
+             (inflight_query ((number_of_elements 3))))
+            Computing RPC!
+            |}])
+        ~until_ok:(fun () ->
+          [%expect
+            {| ((last_ok_response (((number_of_elements 3)) ((0 1) (2 3) (4 5))))) |}]);
+      let%bind () = async_recompute_view handle in
+      let%bind () = async_show handle in
+      [%expect {| ((last_ok_response (((number_of_elements 3)) ((0 1) (2 3) (4 5))))) |}];
+      return ())
+  ;;
+
+  let%expect_test "[Rpc.stremable_{poll,poll_until_ok}] errors are retried" =
+    bisimulate ~f:(fun poll ~expect_diff:_ ->
+      let computation = streamable_poller ~poll in
+      let handle =
+        Handle.create
+          ~rpc_implementations:[ streamable_rpc_implementation () ]
+          (module Poller_spec)
+          computation
+      in
+      let%bind () = async_recompute_view handle in
+      let%bind () = async_show handle in
+      (* Query changed, so we dispatched another rpc! *)
+      [%expect
+        {|
+        ((inflight_query ((number_of_elements 2))))
+        Computing RPC!
+        |}];
+      let%bind () = async_show handle in
+      [%expect {| ((last_ok_response (((number_of_elements 2)) ((0 1) (2 3))))) |}];
+      (* Query changes, so we see a new RPC being sent! (this RPC should return an error). *)
+      let%bind () = async_do_actions handle [ 42 ] in
+      let%bind () = async_recompute_view handle in
+      let%bind () = async_show handle in
+      [%expect
+        {|
+        ((last_ok_response (((number_of_elements 2)) ((0 1) (2 3))))
+         (inflight_query ((number_of_elements 42))))
+        Computing RPC!
+        |}];
+      let%bind () = async_recompute_view handle in
+      let%bind () = async_show handle in
+      [%expect
+        {|
+        ((last_ok_response (((number_of_elements 2)) ((0 1) (2 3))))
+         (last_error
+          (((number_of_elements 42))
+           ((rpc_error
+             (Uncaught_exn
+              ((location "server-side pipe_rpc computation")
+               (exn
+                (monitor.ml.Error (Failure "Error: Too many elements!!")
+                 ("Caught by monitor at file \"lib/streamable/src/state_rpc.ml\", line LINE, characters C1-C2"))))))
+            (connection_description <created-directly>)
+            (rpc_name streamable-plain-rpc) (rpc_version 0)))))
+        |}];
+      (* RPC is sent if time advances by the interval even if the query does not change
+         only, both the normal poller and the until-ok poller should behave identically in
+         this situation and re-send the RPC even if the query didn't change. *)
+      Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
+      let%bind () = async_recompute_view handle in
+      let%bind () = async_show handle in
+      [%expect
+        {|
+        ((last_ok_response (((number_of_elements 2)) ((0 1) (2 3))))
+         (last_error
+          (((number_of_elements 42))
+           ((rpc_error
+             (Uncaught_exn
+              ((location "server-side pipe_rpc computation")
+               (exn
+                (monitor.ml.Error (Failure "Error: Too many elements!!")
+                 ("Caught by monitor at file \"lib/streamable/src/state_rpc.ml\", line LINE, characters C1-C2"))))))
+            (connection_description <created-directly>)
+            (rpc_name streamable-plain-rpc) (rpc_version 0))))
+         (inflight_query ((number_of_elements 42))))
+        Computing RPC!
+        |}];
+      let%bind () = async_recompute_view handle in
+      let%bind () = async_show handle in
+      [%expect
+        {|
+        ((last_ok_response (((number_of_elements 2)) ((0 1) (2 3))))
+         (last_error
+          (((number_of_elements 42))
+           ((rpc_error
+             (Uncaught_exn
+              ((location "server-side pipe_rpc computation")
+               (exn
+                (monitor.ml.Error (Failure "Error: Too many elements!!")
+                 ("Caught by monitor at file \"lib/streamable/src/state_rpc.ml\", line LINE, characters C1-C2"))))))
+            (connection_description <created-directly>)
+            (rpc_name streamable-plain-rpc) (rpc_version 0)))))
+        |}];
+      return ())
+  ;;
+end
 
 let incrementing_polling_state_rpc_implementation ?block_on () =
   let count = ref 0 in
@@ -295,7 +549,7 @@ let%expect_test "inactive delivery of a response will be ignored when \
           ~equal_query:[%equal: int]
           ~equal_response:[%equal: int]
           ~where_to_connect:Self
-          ~every:(Time_ns.Span.of_sec 1.0)
+          ~every:(Value.return (Time_ns.Span.of_sec 1.0))
           ~clear_when_deactivated:true
           (Value.return 0)
       in
@@ -350,7 +604,7 @@ let%expect_test "BUG: completing an RPC at the same time as a disconnect" =
           ~equal_query:[%equal: int]
           ~equal_response:[%equal: int]
           ~where_to_connect:Self
-          ~every:(Time_ns.Span.of_sec 1.0)
+          ~every:(Value.return (Time_ns.Span.of_sec 1.0))
           (Value.return 0)
       in
       return (status >>| Option.some))
@@ -944,7 +1198,10 @@ module%test [@name "versioned polling state rpc"] _ = struct
       |}];
     Bonsai.Var.set activated false;
     Handle.show handle;
-    let%bind () = Handle.flush_async_and_bonsai handle in
+    [%expect {| |}];
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    Handle.recompute_view handle;
+    Handle.show handle;
     [%expect {| |}];
     let%bind () = async_do_actions handle [ Query 7 ] in
     Handle.show handle;
@@ -1241,21 +1498,6 @@ module%test [@name "Status.state"] _ = struct
   ;;
 end
 
-let async_show handle =
-  Handle.show handle;
-  Async_kernel_scheduler.yield_until_no_jobs_remain ()
-;;
-
-let async_recompute_view handle =
-  Handle.recompute_view handle;
-  Async_kernel_scheduler.yield_until_no_jobs_remain ()
-;;
-
-let async_show_diff handle =
-  Handle.show_diff ~diff_context:0 handle;
-  Async_kernel_scheduler.yield_until_no_jobs_remain ()
-;;
-
 module%test [@name "persistent connection failure to connect"] _ = struct
   module Conn = Persistent_connection_kernel.Make (struct
       type t = Rpc.Connection.t
@@ -1352,7 +1594,7 @@ module%test [@name "persistent connection failure to connect"] _ = struct
       Rpc_effect.Polling_state_rpc.poll
         polling_state_rpc
         ~equal_query:Int.equal
-        ~every:(Time_ns.Span.of_sec 1.)
+        ~every:(Value.return (Time_ns.Span.of_sec 1.))
         (Value.return 0)
         ~where_to_connect
     in
@@ -1419,7 +1661,7 @@ module%test [@name "persistent connection failure to connect"] _ = struct
       Rpc_effect.Polling_state_rpc.babel_poll
         caller
         ~equal_query:Int.equal
-        ~every:(Time_ns.Span.of_sec 1.)
+        ~every:(Value.return (Time_ns.Span.of_sec 1.))
         (Value.return 0)
         ~where_to_connect
     in
@@ -1490,7 +1732,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~equal_response:[%equal: Int.t]
         polling_state_rpc
         ~where_to_connect:Self
-        ~every:(Time_ns.Span.of_sec 1.0)
+        ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -1579,7 +1821,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~equal_response:[%equal: Int.t]
         polling_state_rpc
         ~where_to_connect:Self
-        ~every:(Time_ns.Span.of_sec 1.0)
+        ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
     let bvar = Async_kernel.Bvar.create () in
@@ -1673,7 +1915,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~equal_response:[%equal: Int.t]
         polling_state_rpc
         ~where_to_connect:Self
-        ~every:(Time_ns.Span.of_sec 1.0)
+        ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -1749,7 +1991,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
                [%message "on_response_received" (query : int) (response : int Or_error.t)]))
         polling_state_rpc
         ~where_to_connect:Self
-        ~every:(Time_ns.Span.of_sec 1.0)
+        ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -1870,7 +2112,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
             ~equal_response:[%equal: Int.t]
             polling_state_rpc
             ~where_to_connect:Self
-            ~every:(Time_ns.Span.of_sec 1.0)
+            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
             key)
     in
     let handle =
@@ -1999,7 +2241,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
             polling_state_rpc
             ~clear_when_deactivated:false
             ~where_to_connect:Self
-            ~every:(Time_ns.Span.of_sec 1.0)
+            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
             key)
     in
     let handle =
@@ -2117,7 +2359,7 @@ module%test [@name "Rpc.poll"] _ = struct
         ~equal_response:[%equal: Int.t]
         rpc
         ~where_to_connect:Self
-        ~every:(Time_ns.Span.of_sec 1.0)
+        ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -2204,7 +2446,7 @@ module%test [@name "Rpc.poll"] _ = struct
         ~equal_response:[%equal: Int.t]
         rpc
         ~where_to_connect:Self
-        ~every:(Time_ns.Span.of_sec 1.0)
+        ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
     let bvar = Async_kernel.Bvar.create () in
@@ -2316,7 +2558,7 @@ module%test [@name "Rpc.poll"] _ = struct
                [%message "on_response_received" (query : int) (response : int Or_error.t)]))
         rpc
         ~where_to_connect:Self
-        ~every:(Time_ns.Span.of_sec 1.0)
+        ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -2443,7 +2685,7 @@ module%test [@name "Rpc.poll"] _ = struct
             ~equal_response:[%equal: Int.t]
             rpc
             ~where_to_connect:Self
-            ~every:(Time_ns.Span.of_sec 1.0)
+            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
             key)
     in
     let handle =
@@ -2566,7 +2808,7 @@ module%test [@name "Rpc.poll"] _ = struct
             rpc
             ~clear_when_deactivated:false
             ~where_to_connect:Self
-            ~every:(Time_ns.Span.of_sec 1.0)
+            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
             key)
     in
     let handle =
@@ -2706,7 +2948,7 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
         ~equal_response:[%equal: Int.t]
         rpc
         ~where_to_connect:Self
-        ~retry_interval:(Time_ns.Span.of_sec 1.0)
+        ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -2756,7 +2998,7 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
         ~equal_response:[%equal: Int.t]
         rpc
         ~where_to_connect:Self
-        ~retry_interval:(Time_ns.Span.of_sec 1.0)
+        ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -2838,7 +3080,7 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
         ~equal_response:[%equal: Int.t]
         rpc
         ~where_to_connect:Self
-        ~retry_interval:(Time_ns.Span.of_sec 1.0)
+        ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -2926,8 +3168,8 @@ module%test [@name "multi-poller"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      ((5 hello))
       (start 5)
+      ((5 hello))
       |}];
     Handle.show handle;
     [%expect {| ((5 hello)) |}];
@@ -2968,8 +3210,8 @@ module%test [@name "multi-poller"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      ((a ((5 hello))) (b ((5 hello))))
       (start 5)
+      ((a ((5 hello))) (b ((5 hello))))
       |}];
     Handle.show handle;
     [%expect {| ((a ((5 hello))) (b ((5 hello)))) |}];
@@ -3010,9 +3252,9 @@ module%test [@name "multi-poller"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      ((a ((5 hello))) (b ((10 hello))))
       (start 5)
       (start 10)
+      ((a ((5 hello))) (b ((10 hello))))
       |}];
     Handle.show handle;
     [%expect {| ((a ((5 hello))) (b ((10 hello)))) |}];
@@ -3053,8 +3295,8 @@ module%test [@name "multi-poller"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      ((5 hello))
       (start 5)
+      ((5 hello))
       |}];
     Handle.show handle;
     [%expect {| ((5 hello)) |}];
@@ -3064,8 +3306,8 @@ module%test [@name "multi-poller"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      ((5 INACTIVE))
       (stop 5)
+      ((5 INACTIVE))
       |}];
     return ()
   ;;
@@ -3114,8 +3356,8 @@ module%test [@name "multi-poller"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      ((a ((5 hello))) (b ((5 hello))))
       (start 5)
+      ((a ((5 hello))) (b ((5 hello))))
       |}];
     Handle.show handle;
     [%expect {| ((a ((5 hello))) (b ((5 hello)))) |}];
@@ -3169,9 +3411,9 @@ module%test [@name "multi-poller"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      ((a ((5 hello))) (b ((10 hello))))
       (start 5)
       (start 10)
+      ((a ((5 hello))) (b ((10 hello))))
       |}];
     Handle.show handle;
     [%expect {| ((a ((5 hello))) (b ((10 hello)))) |}];
@@ -3181,8 +3423,8 @@ module%test [@name "multi-poller"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      ((a ((5 hello))) (b ((10 INACTIVE))))
       (stop 10)
+      ((a ((5 hello))) (b ((10 INACTIVE))))
       |}];
     return ()
   ;;
@@ -3258,7 +3500,7 @@ module%test [@name "Rpc.poll_until_condition_met"] _ = struct
       ~equal_response:[%equal: int]
       rpc
       ~where_to_connect:Self
-      ~every:(Time_ns.Span.of_sec 1.0)
+      ~every:(Value.return (Time_ns.Span.of_sec 1.0))
       (Bonsai.Expert.Var.value query_var)
       graph
   ;;

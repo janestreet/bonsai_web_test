@@ -1,6 +1,6 @@
 open! Core
 open! Async_kernel
-open Bonsai_web.Proc
+open Bonsai_web_proc
 open Bonsai_web_test
 open Async_rpc_kernel
 open Async_js_test
@@ -18,7 +18,7 @@ let rpc_a =
 let computation iterations =
   let open Bonsai.Let_syntax in
   let%sub count, increment =
-    Bonsai.state_machine0
+    Bonsai.state_machine
       ~default_model:0
       ~apply_action:(fun (_ : _ Bonsai.Apply_action_context.t) model () -> model + 1)
       ()
@@ -45,8 +45,8 @@ let%expect_test _ =
   Handle.show handle;
   [%expect
     {|
-    ()
     (iteration (count 0))
+    ()
     |}];
   Handle.show handle;
   [%expect {| () |}];
@@ -54,22 +54,22 @@ let%expect_test _ =
   Handle.show handle;
   [%expect
     {|
-    ()
     (iteration (count 1))
+    ()
     |}];
   let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
   Handle.show handle;
   [%expect
     {|
-    ()
     (iteration (count 2))
+    ()
     |}];
   let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
   Handle.show handle;
   [%expect
     {|
-    ()
     "finished loop"
+    ()
     |}];
   let handle =
     Handle.create ~rpc_implementations (Result_spec.string (module Unit)) (computation 3)

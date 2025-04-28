@@ -1,6 +1,6 @@
 open! Core
 open! Async_kernel
-open Bonsai_web.Proc
+open Bonsai_web_proc
 
 let schedule_and_print_response callback =
   Vdom.Effect.Expert.handle_non_dom_event_exn

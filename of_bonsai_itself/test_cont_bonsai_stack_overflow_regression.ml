@@ -49,9 +49,8 @@ let%expect_test "stack overflow regression test: long chain of Value.map" =
   [%expect {| 401 |}]
 ;;
 
-let%expect_test ("BUG stack overflow regression test: long chain of Value.map" [@tags
-                                                                                 "js-only"
-                                                                                 , "no-wasm"])
+let%expect_test ("BUG stack overflow regression test: long chain of Value.map"
+  [@tags "js-only", "no-wasm"])
   =
   Expect_test_helpers_base.require_does_raise (fun () ->
     let _ : _ Handle.t = run_long_chain_test ~n:1000 in
@@ -60,8 +59,8 @@ let%expect_test ("BUG stack overflow regression test: long chain of Value.map" [
   [%expect {| ("Stack overflow") |}]
 ;;
 
-let%expect_test ("BUG stack overflow regression test: long chain of Value.map" [@tags
-                                                                                 "wasm-only"])
+let%expect_test ("BUG stack overflow regression test: long chain of Value.map"
+  [@tags "wasm-only"])
   =
   Expect_test_helpers_base.require_does_not_raise (fun () ->
     let _ : _ Handle.t = run_long_chain_test ~n:1000 in
