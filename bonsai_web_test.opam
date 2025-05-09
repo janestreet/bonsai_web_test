@@ -11,6 +11,7 @@ build: [
 ]
 depends: [
   "ocaml" {>= "5.1.0"}
+  "am_running_how_js"
   "async_durable"
   "async_js"
   "async_kernel"
@@ -37,12 +38,15 @@ depends: [
   "ppx_jane"
   "ppx_pattern_bind"
   "streamable"
+  "testable_timeout"
   "textutils"
+  "toplayer"
   "versioned_polling_state_rpc"
   "virtual_dom"
   "dune"                        {>= "3.17.0"}
   "js_of_ocaml"                 {>= "6.0.0"}
   "js_of_ocaml-ppx"             {>= "6.0.0"}
+  "lambdasoup"                  {>= "0.6.3"}
   "re"                          {>= "1.8.0"}
 ]
 available: arch != "arm32" & arch != "x86_32"

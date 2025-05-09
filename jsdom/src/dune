@@ -1,0 +1,10 @@
+(library
+ (name jsdom)
+ (public_name bonsai_web_test.jsdom)
+ (libraries am_running_how_js async_js async_js.async_test async_kernel
+   bonsai bonsai_test bonsai_web toplayer.popover core
+   ppx_expect.config_types patdiff.expect_test_patdiff js_of_ocaml lambdasoup
+   lambda_soup_js testable_timeout virtual_dom.keyboard
+   virtual_dom.vdom_test_helpers)
+ (preprocess
+  (pps ppx_jane bonsai.ppx_bonsai js_of_ocaml-ppx)))
