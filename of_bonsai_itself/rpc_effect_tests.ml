@@ -487,7 +487,7 @@ module%test Streamable_rpc = struct
   ;;
 end
 
-let incrementing_polling_state_rpc_implementation ?block_on () =
+let incrementing_polling_state_rpc_implementation ?(verbose = false) ?block_on () =
   let count = ref 0 in
   Rpc.Implementation.lift
     ~f:(fun connection -> connection, connection)
@@ -496,6 +496,7 @@ let incrementing_polling_state_rpc_implementation ?block_on () =
        ~on_client_and_server_out_of_sync:
          (Expect_test_helpers_core.print_s ~hide_positions:true)
        ~for_first_request:(fun _ query ->
+         if verbose then print_s [%message "server received rpc" (query : int)];
          let%bind () =
            match block_on with
            | Some bvar -> Bvar.wait bvar
@@ -503,10 +504,17 @@ let incrementing_polling_state_rpc_implementation ?block_on () =
          in
          print_s [%message "For first request" (query : int)];
          incr count;
-         return (query * !count))
+         let response = query * !count in
+         if verbose
+         then print_s [%message "server responding to rpc" (query : int) (response : int)];
+         return response)
        (fun _ query ->
+         if verbose then print_s [%message "server received rpc" (query : int)];
          incr count;
-         return (query * !count)))
+         let response = query * !count in
+         if verbose
+         then print_s [%message "server responding to rpc" (query : int) (response : int)];
+         return response))
 ;;
 
 let%expect_test "polling_state_rpc" =
@@ -766,9 +774,7 @@ let create_connection implementations =
 
 let%expect_test "disconnect and re-connect async_durable" =
   let is_broken = ref false in
-  let implementations =
-    ref (Versioned_rpc.Menu.add [ Rpc.Rpc.implement' rpc_a (fun _ _query -> 0) ])
-  in
+  let implementations = ref [ Rpc.Rpc.implement' rpc_a (fun _ _query -> 0) ] in
   let connector =
     Rpc_effect.Connector.async_durable
       (Async_durable.create
@@ -788,8 +794,7 @@ let%expect_test "disconnect and re-connect async_durable" =
   let%bind () = async_do_actions handle [ 0 ] in
   [%expect {| (Ok 0) |}];
   is_broken := true;
-  implementations
-  := Versioned_rpc.Menu.add [ Rpc.Rpc.implement' rpc_b (fun _ _query -> 1) ];
+  implementations := [ Rpc.Rpc.implement' rpc_b (fun _ _query -> 1) ];
   let%bind () = async_do_actions handle [ 0 ] in
   [%expect {| (Ok 1) |}];
   return ()
@@ -805,9 +810,7 @@ let%expect_test "disconnect and re-connect persistent_connection" =
       let close_finished t = Rpc.Connection.close_finished t
     end)
   in
-  let implementations =
-    ref (Versioned_rpc.Menu.add [ Rpc.Rpc.implement' rpc_a (fun _ _query -> 0) ])
-  in
+  let implementations = ref [ Rpc.Rpc.implement' rpc_a (fun _ _query -> 0) ] in
   let connection =
     Conn.create
       ~server_name:"test_server"
@@ -835,8 +838,7 @@ let%expect_test "disconnect and re-connect persistent_connection" =
     let%bind () = Rpc.Connection.close connection in
     Rpc.Connection.close_finished connection
   in
-  implementations
-  := Versioned_rpc.Menu.add [ Rpc.Rpc.implement' rpc_b (fun _ _query -> 1) ];
+  implementations := [ Rpc.Rpc.implement' rpc_b (fun _ _query -> 1) ];
   let%bind _connection = Conn.connected connection in
   let%bind () = async_do_actions handle [ 0 ] in
   [%expect {| (Ok 1) |}];
@@ -1011,10 +1013,9 @@ module%test [@name "versioned polling state rpc"] _ = struct
   let setup_test_env ~rpcs_on_server ~rpcs_on_client =
     let caller = Babel.Caller.of_list_decreasing_preference rpcs_on_client in
     let make_implementations rpcs =
-      Versioned_rpc.Menu.add
-        (List.map
-           (implementations rpcs)
-           ~f:(Rpc.Implementation.lift ~f:(fun connection -> connection, connection)))
+      List.map
+        (implementations rpcs)
+        ~f:(Rpc.Implementation.lift ~f:(fun connection -> connection, connection))
     in
     let is_broken = ref false in
     let implementations = ref (make_implementations rpcs_on_server) in
@@ -1355,7 +1356,10 @@ module%test [@name "Status.state"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      ((state (Disconnected Rpc.Connection.close))
+      ((state
+        (Disconnected
+         (("Connection closed by local side:" Rpc.Connection.close)
+          (connection_description <created-directly>))))
        (connecting_since ("1970-01-01 00:00:00Z")))
       |}];
     let%bind () = next_connection connection in
@@ -1387,7 +1391,10 @@ module%test [@name "Status.state"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      ((state (Disconnected Rpc.Connection.close))
+      ((state
+        (Disconnected
+         (("Connection closed by local side:" Rpc.Connection.close)
+          (connection_description <created-directly>))))
        (connecting_since ("1970-01-01 00:00:03Z")))
       |}];
     let%bind () = next_connection connection in
@@ -1432,7 +1439,10 @@ module%test [@name "Status.state"] _ = struct
     Handle.show handle;
     [%expect
       {|
-      (((state (Disconnected Rpc.Connection.close))
+      (((state
+         (Disconnected
+          (("Connection closed by local side:" Rpc.Connection.close)
+           (connection_description <created-directly>))))
         (connecting_since ("1970-01-01 00:00:00Z"))))
       |}];
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
@@ -2325,6 +2335,74 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
       |}];
     Deferred.unit
   ;;
+
+  let%expect_test "query changes while the previous query is outstanding" =
+    let bvar = Bvar.create () in
+    let query_var = Bonsai.Var.create 1 in
+    let computation =
+      Rpc_effect.Polling_state_rpc.poll
+        polling_state_rpc
+        ~equal_query:[%equal: int]
+        ~equal_response:[%equal: int]
+        ~where_to_connect:Self
+        ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        (Bonsai.Var.value query_var)
+    in
+    let handle =
+      Handle.create
+        ~rpc_implementations:
+          [ incrementing_polling_state_rpc_implementation ~verbose:true ~block_on:bvar ()
+          ]
+        (Result_spec.sexp
+           (module struct
+             type t = (int, int) Rpc_effect.Poll_result.t [@@deriving sexp_of]
+           end))
+        computation
+    in
+    (* dispatch the rpc with query:1 *)
+    let%bind () = async_show handle in
+    [%expect
+      {|
+      ((last_ok_response ()) (last_error ()) (inflight_query ())
+       (refresh <opaque>))
+      ("server received rpc" (query 1))
+      |}];
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    (* set the query to 2. Because we haven't broadcast on [bvar] yet, the
+       first request is still outgoing. *)
+    Bonsai.Var.set query_var 2;
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    let%bind () = async_show handle in
+    (* the client dispatches the rpc, but the inflight_query is still 1 because
+       it needs another frame to catch up.  The server does receive the request though. *)
+    [%expect
+      {|
+      ((last_ok_response ()) (last_error ()) (inflight_query (1))
+       (refresh <opaque>))
+      ("server received rpc" (query 2))
+      |}];
+    (* One frame later, the client is synched up *)
+    let%bind () = async_show handle in
+    [%expect
+      {|
+      ((last_ok_response ()) (last_error ()) (inflight_query (2))
+       (refresh <opaque>))
+      |}];
+    (* now we broadcast on the bvar, freeing up both queries, which respond immediately. *)
+    Bvar.broadcast bvar ();
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    let%bind () = async_show handle in
+    [%expect
+      {|
+      ("For first request" (query 2))
+      ("server responding to rpc" (query 2) (response 2))
+      ("For first request" (query 1))
+      ("server responding to rpc" (query 1) (response 2))
+      ((last_ok_response ((2 2))) (last_error ()) (inflight_query ())
+       (refresh <opaque>))
+      |}];
+    Deferred.unit
+  ;;
 end
 
 module%test [@name "Rpc.poll"] _ = struct
@@ -3150,11 +3228,7 @@ module%test [@name "multi-poller"] _ = struct
         Bonsai_web.Rpc_effect.Shared_poller.custom_create (module Int) ~f:dummy_poller
       in
       let%sub lookup =
-        Bonsai_web.Rpc_effect.Shared_poller.lookup
-          ~sexp_of_model:[%sexp_of: Int.t]
-          ~equal:[%equal: Int.t]
-          poller
-          (Value.return 5)
+        Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5)
       in
       let%arr lookup in
       [%message "" ~_:(lookup.last_ok_response : (int * string) option)]
@@ -3181,20 +3255,8 @@ module%test [@name "multi-poller"] _ = struct
       let%sub poller =
         Bonsai_web.Rpc_effect.Shared_poller.custom_create (module Int) ~f:dummy_poller
       in
-      let%sub a =
-        Bonsai_web.Rpc_effect.Shared_poller.lookup
-          ~sexp_of_model:[%sexp_of: Int.t]
-          ~equal:[%equal: Int.t]
-          poller
-          (Value.return 5)
-      in
-      let%sub b =
-        Bonsai_web.Rpc_effect.Shared_poller.lookup
-          ~sexp_of_model:[%sexp_of: Int.t]
-          ~equal:[%equal: Int.t]
-          poller
-          (Value.return 5)
-      in
+      let%sub a = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5) in
+      let%sub b = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5) in
       let%arr a and b in
       [%message
         ""
@@ -3223,20 +3285,8 @@ module%test [@name "multi-poller"] _ = struct
       let%sub poller =
         Bonsai_web.Rpc_effect.Shared_poller.custom_create (module Int) ~f:dummy_poller
       in
-      let%sub a =
-        Bonsai_web.Rpc_effect.Shared_poller.lookup
-          ~sexp_of_model:[%sexp_of: Int.t]
-          ~equal:[%equal: Int.t]
-          poller
-          (Value.return 5)
-      in
-      let%sub b =
-        Bonsai_web.Rpc_effect.Shared_poller.lookup
-          ~sexp_of_model:[%sexp_of: Int.t]
-          ~equal:[%equal: Int.t]
-          poller
-          (Value.return 10)
-      in
+      let%sub a = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5) in
+      let%sub b = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 10) in
       let%arr a and b in
       [%message
         ""
@@ -3269,12 +3319,7 @@ module%test [@name "multi-poller"] _ = struct
       in
       let%sub lookup =
         if%sub Bonsai.Var.value bool_var
-        then
-          Bonsai_web.Rpc_effect.Shared_poller.lookup
-            ~sexp_of_model:[%sexp_of: Int.t]
-            ~equal:[%equal: Int.t]
-            poller
-            (Value.return 5)
+        then Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5)
         else
           Bonsai.const
             { Rpc_effect.Poll_result.last_ok_response = Some (5, "INACTIVE")
@@ -3318,21 +3363,10 @@ module%test [@name "multi-poller"] _ = struct
       let%sub poller =
         Bonsai_web.Rpc_effect.Shared_poller.custom_create (module Int) ~f:dummy_poller
       in
-      let%sub a =
-        Bonsai_web.Rpc_effect.Shared_poller.lookup
-          ~sexp_of_model:[%sexp_of: Int.t]
-          ~equal:[%equal: Int.t]
-          poller
-          (Value.return 5)
-      in
+      let%sub a = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5) in
       let%sub b =
         if%sub Bonsai.Var.value bool_var
-        then
-          Bonsai_web.Rpc_effect.Shared_poller.lookup
-            ~sexp_of_model:[%sexp_of: Int.t]
-            ~equal:[%equal: Int.t]
-            poller
-            (Value.return 5)
+        then Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5)
         else
           Bonsai.const
             { Rpc_effect.Poll_result.last_ok_response = Some (5, "INACTIVE")
@@ -3373,21 +3407,10 @@ module%test [@name "multi-poller"] _ = struct
       let%sub poller =
         Bonsai_web.Rpc_effect.Shared_poller.custom_create (module Int) ~f:dummy_poller
       in
-      let%sub a =
-        Bonsai_web.Rpc_effect.Shared_poller.lookup
-          ~sexp_of_model:[%sexp_of: Int.t]
-          ~equal:[%equal: Int.t]
-          poller
-          (Value.return 5)
-      in
+      let%sub a = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5) in
       let%sub b =
         if%sub Bonsai.Var.value bool_var
-        then
-          Bonsai_web.Rpc_effect.Shared_poller.lookup
-            ~sexp_of_model:[%sexp_of: Int.t]
-            ~equal:[%equal: Int.t]
-            poller
-            (Value.return 10)
+        then Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 10)
         else
           Bonsai.const
             { Rpc_effect.Poll_result.last_ok_response = Some (10, "INACTIVE")

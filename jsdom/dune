@@ -1,7 +1,0 @@
-(library
- (name bonsai_web_test_jsdom)
- (libraries async_js async_js.async_test async_kernel bonsai.extra
-   bonsai.protocol bonsai_web core patdiff.expect_test_patdiff js_of_ocaml
-   jsdom with)
- (preprocess
-  (pps ppx_jane js_of_ocaml-ppx ppx_quick_test ppx_html bonsai.ppx_bonsai)))

@@ -73,7 +73,7 @@ let add_rpc_implementations_to_computation ~rpc_implementations ~connectors comp
       Rpc_effect.Connector.for_test
         (Rpc.Implementations.create_exn
            ~on_unknown_rpc:`Continue
-           ~implementations:(Versioned_rpc.Menu.add rpc_implementations)
+           ~implementations:rpc_implementations
            ~on_exception:Log_on_background_exn)
         ~connection_state:Fn.id
     in

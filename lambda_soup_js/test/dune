@@ -1,0 +1,6 @@
+(library
+ (name lambda_soup_js_test)
+ (public_name bonsai_web_test.lambda_soup_js_test)
+ (libraries core patdiff.expect_test_patdiff lambdasoup lambda_soup_js)
+ (preprocess
+  (pps ppx_jane js_of_ocaml-ppx)))
