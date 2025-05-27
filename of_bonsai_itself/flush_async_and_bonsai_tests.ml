@@ -23,7 +23,13 @@ let computation iterations =
       ~apply_action:(fun (_ : _ Bonsai.Apply_action_context.t) model () -> model + 1)
       ()
   in
-  let%sub dispatcher = Rpc_effect.Rpc.dispatcher rpc_a ~where_to_connect:Self in
+  let%sub dispatcher =
+    Rpc_effect.Rpc.dispatcher
+      rpc_a
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+  in
   let%sub callback =
     let%arr dispatcher and increment in
     fun count ->

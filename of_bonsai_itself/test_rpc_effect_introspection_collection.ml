@@ -316,7 +316,9 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
            ~sexp_of_query:[%sexp_of: string]
            ~sexp_of_response:[%sexp_of: string]
            Rpcs.reverse_rpc_v1
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -1030,7 +1032,9 @@ module%test [@name "Rpc_effect.Rpc.babel_dispatcher"] _ = struct
            ~sexp_of_query:[%sexp_of: string]
            ~sexp_of_response:[%sexp_of: string]
            Rpcs.babel_reverse_rpc_v2
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -1096,7 +1100,9 @@ module%test [@name "Rpc_effect.Rpc.streamable_dispatcher"] _ = struct
            ~sexp_of_query:[%sexp_of: string]
            ~sexp_of_response:[%sexp_of: string]
            Rpcs.Streamable_rpc.rpc
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -1155,7 +1161,9 @@ module%test [@name "Rpc_effect.Polling_state_rpc.dispatcher"] _ = struct
            ~sexp_of_query:[%sexp_of: string]
            ~sexp_of_response:[%sexp_of: string]
            Rpcs.Polling_state_rpc.rpc_v1
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -1552,7 +1560,9 @@ module%test [@name "Rpc_effect.Polling_state_rpc.babel_dispatcher"] _ = struct
            ~sexp_of_query:[%sexp_of: string]
            ~sexp_of_response:[%sexp_of: string]
            Rpcs.Polling_state_rpc.caller
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -1628,7 +1638,9 @@ module%test [@name "Normal Rpc.Rpc.poll"] _ = struct
            Rpcs.reverse_rpc_v1
            ~equal_query:[%equal: string]
            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -1748,7 +1760,9 @@ module%test [@name "Normal Rpc.Rpc.poll"] _ = struct
            Rpcs.reverse_rpc_v1
            ~equal_query:[%equal: string]
            ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -1769,7 +1783,7 @@ module%test [@name "Normal Rpc.Rpc.poll"] _ = struct
         (Normal (name reverse-rpc) (version 1)
          (interval (Poll_until_ok (retry_interval 1s)))))
        (start_time "1970-01-01 00:00:00Z") (query (Sexp_of_provided capybara))
-       (path bonsai_path_x_y_x))
+       (path bonsai_path_x_y_x_x))
 
       (Finished (id 0) (duration 0s) (response (Ok (Sexp_of_provided arabypac))))
 
@@ -1788,7 +1802,7 @@ module%test [@name "Normal Rpc.Rpc.poll"] _ = struct
       +|    (query (Sexp_of_provided capybara))
       +|    (status (
       +|      Finished (duration 0s) (response (Ok (Sexp_of_provided arabypac)))))
-      +|    (path bonsai_path_x_y_x))))
+      +|    (path bonsai_path_x_y_x_x))))
       |}];
     return ()
   ;;
@@ -1805,7 +1819,9 @@ module%test [@name "Rpc_effect.Rpc.babel_poll and babel_poll_until_ok"] _ = stru
            Rpcs.babel_reverse_rpc_v2
            ~equal_query:[%equal: string]
            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -1863,7 +1879,9 @@ module%test [@name "Rpc_effect.Rpc.babel_poll and babel_poll_until_ok"] _ = stru
            Rpcs.babel_reverse_rpc_v2
            ~equal_query:[%equal: string]
            ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -1886,7 +1904,7 @@ module%test [@name "Rpc_effect.Rpc.babel_poll and babel_poll_until_ok"] _ = stru
           (((name reverse-rpc) (version 2)) ((name reverse-rpc) (version 1))))
          (interval (Poll_until_ok (retry_interval 1s)))))
        (start_time "1970-01-01 00:00:00Z") (query (Sexp_of_provided capybara))
-       (path bonsai_path_x_y_x))
+       (path bonsai_path_x_y_x_x))
 
       (Finished (id 0) (duration 0s) (response (Ok (Sexp_of_provided arabypac))))
 
@@ -1906,7 +1924,7 @@ module%test [@name "Rpc_effect.Rpc.babel_poll and babel_poll_until_ok"] _ = stru
       +|    (query (Sexp_of_provided capybara))
       +|    (status (
       +|      Finished (duration 0s) (response (Ok (Sexp_of_provided arabypac)))))
-      +|    (path bonsai_path_x_y_x))))
+      +|    (path bonsai_path_x_y_x_x))))
       |}];
     return ()
   ;;
@@ -1923,7 +1941,9 @@ module%test [@name "Rpc_effect.Polling_state_rpc.poll and babel_poll"] _ = struc
            Rpcs.Polling_state_rpc.rpc_v1
            ~equal_query:[%equal: string]
            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -1983,7 +2003,9 @@ module%test [@name "Rpc_effect.Polling_state_rpc.poll and babel_poll"] _ = struc
            Rpcs.Polling_state_rpc.caller
            ~equal_query:[%equal: string]
            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -2049,7 +2071,9 @@ module%test [@name "Rpc_effect.Rpc.streamable_poll"] _ = struct
            Rpcs.Streamable_rpc.rpc
            ~equal_query:[%equal: string]
            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -2106,7 +2130,9 @@ module%test [@name "Rpc_effect.Rpc.streamable_poll_until_ok"] _ = struct
            Rpcs.Streamable_rpc.rpc
            ~equal_query:[%equal: string]
            ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -2127,7 +2153,7 @@ module%test [@name "Rpc_effect.Rpc.streamable_poll_until_ok"] _ = struct
         (Streamable (name streamable-reverse-rpc) (version 1)
          (interval (Poll_until_ok (retry_interval 1s)))))
        (start_time "1970-01-01 00:00:00Z") (query (Sexp_of_provided capybara))
-       (path bonsai_path_x_y_x))
+       (path bonsai_path_x_y_x_x))
 
       (Finished (id 0) (duration 0s) (response (Ok (Sexp_of_provided arabypac))))
 
@@ -2146,7 +2172,7 @@ module%test [@name "Rpc_effect.Rpc.streamable_poll_until_ok"] _ = struct
       +|    (query (Sexp_of_provided capybara))
       +|    (status (
       +|      Finished (duration 0s) (response (Ok (Sexp_of_provided arabypac)))))
-      +|    (path bonsai_path_x_y_x))))
+      +|    (path bonsai_path_x_y_x_x))))
       |}];
     return ()
   ;;
@@ -2210,7 +2236,9 @@ module%test [@name "More interesting polling_state_rpc diffs"] _ = struct
            ~sexp_of_query:[%sexp_of: string]
            ~sexp_of_response:[%sexp_of: Polling_state_rpc.Response.t]
            Polling_state_rpc.rpc
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -2418,7 +2446,9 @@ struct
            Rpcs.reverse_rpc_v1
            ~equal_query:[%equal: string]
            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -2441,7 +2471,7 @@ struct
         (Normal (name reverse-rpc) (version 1)
          (interval (Poll_until_condition_met (every 1s)))))
        (start_time "1970-01-01 00:00:00Z") (query (Sexp_of_provided capybara))
-       (path bonsai_path_x_y_x))
+       (path bonsai_path_x_y_x_x))
 
       (Finished (id 0) (duration 0s) (response (Ok (Sexp_of_provided arabypac))))
 
@@ -2460,7 +2490,7 @@ struct
       +|    (query (Sexp_of_provided capybara))
       +|    (status (
       +|      Finished (duration 0s) (response (Ok (Sexp_of_provided arabypac)))))
-      +|    (path bonsai_path_x_y_x))))
+      +|    (path bonsai_path_x_y_x_x))))
       |}];
     return ()
   ;;
@@ -2478,7 +2508,9 @@ struct
            Rpcs.babel_reverse_rpc_v1
            ~equal_query:[%equal: string]
            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-           ~where_to_connect:Self)
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
       ()
   ;;
 
@@ -2501,7 +2533,7 @@ struct
         (Babel (descriptions (((name reverse-rpc) (version 1))))
          (interval (Poll_until_condition_met (every 1s)))))
        (start_time "1970-01-01 00:00:00Z") (query (Sexp_of_provided capybara))
-       (path bonsai_path_x_y_x))
+       (path bonsai_path_x_y_x_x))
 
       (Finished (id 0) (duration 0s) (response (Ok (Sexp_of_provided arabypac))))
 
@@ -2521,7 +2553,7 @@ struct
       +|    (query (Sexp_of_provided capybara))
       +|    (status (
       +|      Finished (duration 0s) (response (Ok (Sexp_of_provided arabypac)))))
-      +|    (path bonsai_path_x_y_x))))
+      +|    (path bonsai_path_x_y_x_x))))
       |}];
     return ()
   ;;
