@@ -134,7 +134,13 @@ module Int_to_int_or_error = struct
 end
 
 let%expect_test "test fallback" =
-  let computation = Rpc_effect.Rpc.dispatcher rpc_a ~where_to_connect:Self in
+  let computation =
+    Rpc_effect.Rpc.dispatcher
+      rpc_a
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+  in
   let handle =
     Handle.create
       ~connectors:(fun _ -> Bonsai_web.Rpc_effect.Connector.test_fallback)
@@ -154,7 +160,13 @@ let%expect_test "test fallback" =
 ;;
 
 let%expect_test "provided RPC" =
-  let computation = Rpc_effect.Rpc.dispatcher rpc_a ~where_to_connect:Self in
+  let computation =
+    Rpc_effect.Rpc.dispatcher
+      rpc_a
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+  in
   (* By providing an implementation to the handle, we get control over the
      value returned by the RPC. *)
   let handle =
@@ -169,7 +181,13 @@ let%expect_test "provided RPC" =
 ;;
 
 let%expect_test "not provided RPC" =
-  let computation = Rpc_effect.Rpc.dispatcher rpc_a ~where_to_connect:Self in
+  let computation =
+    Rpc_effect.Rpc.dispatcher
+      rpc_a
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+  in
   let handle =
     Handle.create ~rpc_implementations:[] (module Int_to_int_or_error) computation
   in
@@ -184,7 +202,13 @@ let%expect_test "not provided RPC" =
 ;;
 
 let%expect_test "latest version of a babel RPC" =
-  let computation = Rpc_effect.Rpc.babel_dispatcher babel_rpc_a ~where_to_connect:Self in
+  let computation =
+    Rpc_effect.Rpc.babel_dispatcher
+      babel_rpc_a
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+  in
   let handle =
     Handle.create
       ~rpc_implementations:[ Rpc.Rpc.implement' rpc_a (fun _ query -> query) ]
@@ -197,7 +221,13 @@ let%expect_test "latest version of a babel RPC" =
 ;;
 
 let%expect_test "previous version of a babel RPC" =
-  let computation = Rpc_effect.Rpc.babel_dispatcher babel_rpc_b ~where_to_connect:Self in
+  let computation =
+    Rpc_effect.Rpc.babel_dispatcher
+      babel_rpc_b
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+  in
   let handle =
     Handle.create
       ~rpc_implementations:[ Rpc.Rpc.implement' rpc_a (fun _ query -> query) ]
@@ -243,7 +273,9 @@ module%test Streamable_rpc = struct
       let%sub dispatcher =
         Rpc_effect.Rpc.streamable_dispatcher
           Streamable_plain_rpc.rpc
-          ~where_to_connect:Self
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
       in
       let%arr dispatcher in
       fun number_of_elements -> dispatcher { number_of_elements }
@@ -330,7 +362,9 @@ module%test Streamable_rpc = struct
       Rpc_effect.Rpc.streamable_poll
         ~equal_query:[%equal: Query.t]
         Streamable_plain_rpc.rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         query
     in
@@ -338,7 +372,9 @@ module%test Streamable_rpc = struct
       Rpc_effect.Rpc.streamable_poll_until_ok
         ~equal_query:[%equal: Query.t]
         Streamable_plain_rpc.rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
         query
     in
@@ -519,7 +555,11 @@ let incrementing_polling_state_rpc_implementation ?(verbose = false) ?block_on (
 
 let%expect_test "polling_state_rpc" =
   let computation =
-    Rpc_effect.Polling_state_rpc.dispatcher polling_state_rpc ~where_to_connect:Self
+    Rpc_effect.Polling_state_rpc.dispatcher
+      polling_state_rpc
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
   in
   let handle =
     Handle.create
@@ -556,7 +596,9 @@ let%expect_test "inactive delivery of a response will be ignored when \
           polling_state_rpc
           ~equal_query:[%equal: int]
           ~equal_response:[%equal: int]
-          ~where_to_connect:Self
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
           ~every:(Value.return (Time_ns.Span.of_sec 1.0))
           ~clear_when_deactivated:true
           (Value.return 0)
@@ -611,7 +653,9 @@ let%expect_test "BUG: completing an RPC at the same time as a disconnect" =
           polling_state_rpc
           ~equal_query:[%equal: int]
           ~equal_response:[%equal: int]
-          ~where_to_connect:Self
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
           ~every:(Value.return (Time_ns.Span.of_sec 1.0))
           (Value.return 0)
       in
@@ -676,7 +720,13 @@ let%expect_test "multiple polling_state_rpc" =
       map
       ~f:(fun key _data ->
         let%sub dispatcher =
-          Rpc_effect.Polling_state_rpc.dispatcher polling_state_rpc ~where_to_connect:Self
+          Rpc_effect.Polling_state_rpc.dispatcher
+            polling_state_rpc
+            ~where_to_connect:
+              (Value.return
+                 (Rpc_effect.Where_to_connect.self
+                    ~on_conn_failure:Retry_until_success
+                    ()))
         in
         let%arr dispatcher and key in
         dispatcher key)
@@ -784,7 +834,13 @@ let%expect_test "disconnect and re-connect async_durable" =
          ~is_broken:(fun _ -> !is_broken)
          ())
   in
-  let computation = Rpc_effect.Rpc.babel_dispatcher babel_rpc_b ~where_to_connect:Self in
+  let computation =
+    Rpc_effect.Rpc.babel_dispatcher
+      babel_rpc_b
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+  in
   let handle =
     Handle.create
       ~connectors:(fun _ -> connector)
@@ -824,7 +880,13 @@ let%expect_test "disconnect and re-connect persistent_connection" =
       (module Conn)
       connection
   in
-  let computation = Rpc_effect.Rpc.babel_dispatcher babel_rpc_b ~where_to_connect:Self in
+  let computation =
+    Rpc_effect.Rpc.babel_dispatcher
+      babel_rpc_b
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+  in
   let handle =
     Handle.create
       ~connectors:(fun _ -> connector)
@@ -870,7 +932,11 @@ let%expect_test "disconnect and re-connect with polling_state_rpc" =
       connection
   in
   let computation =
-    Rpc_effect.Polling_state_rpc.dispatcher polling_state_rpc ~where_to_connect:Self
+    Rpc_effect.Polling_state_rpc.dispatcher
+      polling_state_rpc
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
   in
   let handle =
     Handle.create
@@ -1035,7 +1101,13 @@ module%test [@name "versioned polling state rpc"] _ = struct
       let%sub dispatch =
         match%sub Bonsai.Var.value activated with
         | true ->
-          Rpc_effect.Polling_state_rpc.babel_dispatcher caller ~where_to_connect:Self
+          Rpc_effect.Polling_state_rpc.babel_dispatcher
+            caller
+            ~where_to_connect:
+              (Value.return
+                 (Rpc_effect.Where_to_connect.self
+                    ~on_conn_failure:Retry_until_success
+                    ()))
         | false ->
           Bonsai.const
             (Effect.of_sync_fun (fun (_ : int) -> Ok "fake rpc implementation"))
@@ -1342,7 +1414,10 @@ module%test [@name "Status.state"] _ = struct
       Handle.create
         ~connectors:(fun _ -> connector)
         (Result_spec.sexp (module Rpc_effect.Status))
-        (Rpc_effect.Status.state ~where_to_connect:Self)
+        (Rpc_effect.Status.state
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
     in
     Handle.show handle;
     [%expect {| ((state Connecting) (connecting_since ())) |}];
@@ -1374,7 +1449,10 @@ module%test [@name "Status.state"] _ = struct
       Handle.create
         ~connectors:(fun _ -> connector)
         (Result_spec.sexp (module Rpc_effect.Status))
-        (Rpc_effect.Status.state ~where_to_connect:Self)
+        (Rpc_effect.Status.state
+           ~where_to_connect:
+             (Value.return
+                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())))
     in
     Handle.show handle;
     [%expect {| ((state Connecting) (connecting_since ())) |}];
@@ -1411,7 +1489,14 @@ module%test [@name "Status.state"] _ = struct
       let open Bonsai.Let_syntax in
       if%sub Bonsai.Var.value is_active
       then (
-        let%sub status = Rpc_effect.Status.state ~where_to_connect:Self in
+        let%sub status =
+          Rpc_effect.Status.state
+            ~where_to_connect:
+              (Value.return
+                 (Rpc_effect.Where_to_connect.self
+                    ~on_conn_failure:Retry_until_success
+                    ()))
+        in
         Bonsai.pure Option.some status)
       else Bonsai.const None
     in
@@ -1461,7 +1546,14 @@ module%test [@name "Status.state"] _ = struct
       let open Bonsai.Let_syntax in
       if%sub Bonsai.Var.value is_active
       then (
-        let%sub status = Rpc_effect.Status.state ~where_to_connect:Self in
+        let%sub status =
+          Rpc_effect.Status.state
+            ~where_to_connect:
+              (Value.return
+                 (Rpc_effect.Where_to_connect.self
+                    ~on_conn_failure:Retry_until_success
+                    ()))
+        in
         Bonsai.pure Option.some status)
       else Bonsai.const None
     in
@@ -1492,7 +1584,12 @@ module%test [@name "Status.state"] _ = struct
   ;;
 
   let%expect_test "failed to connect" =
-    let component = Rpc_effect.Status.state ~where_to_connect:Self in
+    let component =
+      Rpc_effect.Status.state
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+    in
     let handle = Handle.create (Result_spec.sexp (module Rpc_effect.Status)) component in
     Handle.show handle;
     [%expect {| ((state Connecting) (connecting_since ())) |}];
@@ -1537,7 +1634,10 @@ module%test [@name "persistent connection failure to connect"] _ = struct
 
   (* The choice of [Self] doesn't matter here, because we pass `~connectors` to
        `Handle.create`, overriding all connection establishment logic. *)
-  let where_to_connect = Rpc_effect.Where_to_connect.Self
+  let where_to_connect =
+    Value.return
+      (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())
+  ;;
 
   let%expect_test "regular dispatcher, on_conn_failure:Retry_until_success" =
     let computation = Rpc_effect.Rpc.dispatcher rpc_a ~where_to_connect in
@@ -1741,7 +1841,9 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~equal_query:[%equal: Int.t]
         ~equal_response:[%equal: Int.t]
         polling_state_rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
@@ -1830,7 +1932,9 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~equal_query:[%equal: Int.t]
         ~equal_response:[%equal: Int.t]
         polling_state_rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
@@ -1924,7 +2028,9 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~equal_query:[%equal: Int.t]
         ~equal_response:[%equal: Int.t]
         polling_state_rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
@@ -2000,7 +2106,9 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
              Effect.print_s
                [%message "on_response_received" (query : int) (response : int Or_error.t)]))
         polling_state_rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
@@ -2121,7 +2229,11 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
             ~equal_query:[%equal: Int.t]
             ~equal_response:[%equal: Int.t]
             polling_state_rpc
-            ~where_to_connect:Self
+            ~where_to_connect:
+              (Value.return
+                 (Rpc_effect.Where_to_connect.self
+                    ~on_conn_failure:Retry_until_success
+                    ()))
             ~every:(Value.return (Time_ns.Span.of_sec 1.0))
             key)
     in
@@ -2250,7 +2362,11 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
             ~equal_response:[%equal: Int.t]
             polling_state_rpc
             ~clear_when_deactivated:false
-            ~where_to_connect:Self
+            ~where_to_connect:
+              (Value.return
+                 (Rpc_effect.Where_to_connect.self
+                    ~on_conn_failure:Retry_until_success
+                    ()))
             ~every:(Value.return (Time_ns.Span.of_sec 1.0))
             key)
     in
@@ -2344,7 +2460,9 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         polling_state_rpc
         ~equal_query:[%equal: int]
         ~equal_response:[%equal: int]
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value query_var)
     in
@@ -2436,7 +2554,9 @@ module%test [@name "Rpc.poll"] _ = struct
         ~equal_query:[%equal: Int.t]
         ~equal_response:[%equal: Int.t]
         rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
@@ -2523,7 +2643,9 @@ module%test [@name "Rpc.poll"] _ = struct
         ~equal_query:[%equal: Int.t]
         ~equal_response:[%equal: Int.t]
         rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
@@ -2635,7 +2757,9 @@ module%test [@name "Rpc.poll"] _ = struct
              Effect.print_s
                [%message "on_response_received" (query : int) (response : int Or_error.t)]))
         rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
@@ -2762,7 +2886,11 @@ module%test [@name "Rpc.poll"] _ = struct
             ~equal_query:[%equal: Int.t]
             ~equal_response:[%equal: Int.t]
             rpc
-            ~where_to_connect:Self
+            ~where_to_connect:
+              (Value.return
+                 (Rpc_effect.Where_to_connect.self
+                    ~on_conn_failure:Retry_until_success
+                    ()))
             ~every:(Value.return (Time_ns.Span.of_sec 1.0))
             key)
     in
@@ -2885,7 +3013,11 @@ module%test [@name "Rpc.poll"] _ = struct
             ~equal_response:[%equal: Int.t]
             rpc
             ~clear_when_deactivated:false
-            ~where_to_connect:Self
+            ~where_to_connect:
+              (Value.return
+                 (Rpc_effect.Where_to_connect.self
+                    ~on_conn_failure:Retry_until_success
+                    ()))
             ~every:(Value.return (Time_ns.Span.of_sec 1.0))
             key)
     in
@@ -3025,7 +3157,9 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
         ~equal_query:[%equal: Int.t]
         ~equal_response:[%equal: Int.t]
         rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
@@ -3075,7 +3209,9 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
         ~equal_query:[%equal: Int.t]
         ~equal_response:[%equal: Int.t]
         rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
@@ -3157,7 +3293,9 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
         ~equal_query:[%equal: Int.t]
         ~equal_response:[%equal: Int.t]
         rpc
-        ~where_to_connect:Self
+        ~where_to_connect:
+          (Value.return
+             (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
         (Bonsai.Var.value input_var)
     in
@@ -3522,7 +3660,9 @@ module%test [@name "Rpc.poll_until_condition_met"] _ = struct
          fun response -> if response >= n then `Stop_polling else `Continue)
       ~equal_response:[%equal: int]
       rpc
-      ~where_to_connect:Self
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
       ~every:(Value.return (Time_ns.Span.of_sec 1.0))
       (Bonsai.Expert.Var.value query_var)
       graph
