@@ -25,118 +25,118 @@ module%test [@name "Comparing graph structure."] _ = struct
         (Sub (from Leaf0) (via (Test 0))
          (into
           (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-           (via (Test 2))
+           (via (Test 1))
            (into
             (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-             (via (Test 4))
+             (via (Test 2))
              (into
-              (Sub (from Leaf0) (via (Test 5))
+              (Sub (from Leaf0) (via (Test 3))
                (into
                 (Sub
-                 (from (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-                 (via (Test 7))
+                 (from (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+                 (via (Test 4))
                  (into
                   (Sub
-                   (from (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-                   (via (Test 9))
+                   (from (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+                   (via (Test 5))
                    (into
                     (Return
                      (value
                       (Mapn
-                       (inputs ((Named (uid (Test 7))) (Named (uid (Test 9)))))))))))))))))))))
-       (via (Test 11))
+                       (inputs ((Named (uid (Test 4))) (Named (uid (Test 5)))))))))))))))))))))
+       (via (Test 6))
        (into
-        (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 11)))))))))
-         (via (Test 13))
+        (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 6)))))))))
+         (via (Test 7))
          (into
-          (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 11)))))))))
-           (via (Test 15))
+          (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 6)))))))))
+           (via (Test 8))
            (into
             (Sub
              (from
-              (Sub (from Path) (via (Test 16))
-               (into (Return (value (Mapn (inputs ((Named (uid (Test 16)))))))))))
-             (via (Test 18))
+              (Sub (from Path) (via (Test 9))
+               (into (Return (value (Mapn (inputs ((Named (uid (Test 9)))))))))))
+             (via (Test 10))
              (into
               (Sub
                (from
                 (Sub
                  (from
-                  (Sub (from Leaf0) (via (Test 19))
+                  (Sub (from Leaf0) (via (Test 11))
                    (into
                     (Sub
                      (from
-                      (Return (value (Mapn (inputs ((Named (uid (Test 19)))))))))
-                     (via (Test 21))
+                      (Return (value (Mapn (inputs ((Named (uid (Test 11)))))))))
+                     (via (Test 12))
                      (into
                       (Sub
                        (from
-                        (Return (value (Mapn (inputs ((Named (uid (Test 19)))))))))
-                       (via (Test 23))
+                        (Return (value (Mapn (inputs ((Named (uid (Test 11)))))))))
+                       (via (Test 13))
                        (into
-                        (Sub (from Leaf0) (via (Test 24))
+                        (Sub (from Leaf0) (via (Test 14))
                          (into
                           (Sub
                            (from
                             (Return
-                             (value (Mapn (inputs ((Named (uid (Test 24)))))))))
-                           (via (Test 26))
+                             (value (Mapn (inputs ((Named (uid (Test 14)))))))))
+                           (via (Test 15))
                            (into
                             (Sub
                              (from
                               (Return
-                               (value (Mapn (inputs ((Named (uid (Test 24)))))))))
-                             (via (Test 28))
+                               (value (Mapn (inputs ((Named (uid (Test 14)))))))))
+                             (via (Test 16))
                              (into
                               (Return
                                (value
                                 (Mapn
                                  (inputs
-                                  ((Named (uid (Test 26))) (Named (uid (Test 28)))))))))))))))))))))
-                 (via (Test 30))
+                                  ((Named (uid (Test 15))) (Named (uid (Test 16)))))))))))))))))))))
+                 (via (Test 17))
                  (into
                   (Sub
                    (from
-                    (Return (value (Mapn (inputs ((Named (uid (Test 30)))))))))
-                   (via (Test 32))
+                    (Return (value (Mapn (inputs ((Named (uid (Test 17)))))))))
+                   (via (Test 18))
                    (into
                     (Sub
                      (from
-                      (Return (value (Mapn (inputs ((Named (uid (Test 30)))))))))
-                     (via (Test 34))
+                      (Return (value (Mapn (inputs ((Named (uid (Test 17)))))))))
+                     (via (Test 19))
                      (into
                       (Sub
                        (from
-                        (Sub (from Path) (via (Test 35))
+                        (Sub (from Path) (via (Test 20))
                          (into
                           (Return
-                           (value (Mapn (inputs ((Named (uid (Test 35)))))))))))
-                       (via (Test 37))
+                           (value (Mapn (inputs ((Named (uid (Test 20)))))))))))
+                       (via (Test 21))
                        (into
                         (Sub
                          (from
                           (Sub
                            (from
-                            (Sub (from Path) (via (Test 38))
+                            (Sub (from Path) (via (Test 22))
                              (into
                               (Return
-                               (value (Mapn (inputs ((Named (uid (Test 38)))))))))))
-                           (via (Test 40))
+                               (value (Mapn (inputs ((Named (uid (Test 22)))))))))))
+                           (via (Test 23))
                            (into
                             (Return
-                             (value (Mapn (inputs ((Named (uid (Test 40)))))))))))
-                         (via (Test 42))
+                             (value (Mapn (inputs ((Named (uid (Test 23)))))))))))
+                         (via (Test 24))
                          (into
                           (Return
                            (value
                             (Mapn
                              (inputs
-                              ((Named (uid (Test 42))) (Named (uid (Test 37)))))))))))))))))))
-               (via (Test 44))
+                              ((Named (uid (Test 24))) (Named (uid (Test 21)))))))))))))))))))
+               (via (Test 25))
                (into
                 (Return
                  (value
-                  (Mapn (inputs ((Named (uid (Test 44))) (Named (uid (Test 18))))))))))))))))))
+                  (Mapn (inputs ((Named (uid (Test 25))) (Named (uid (Test 10))))))))))))))))))
       |}]
   ;;
 
@@ -147,78 +147,77 @@ module%test [@name "Comparing graph structure."] _ = struct
       (Sub (from Leaf0) (via (Test 0))
        (into
         (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-         (via (Test 2))
+         (via (Test 1))
          (into
           (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-           (via (Test 4))
+           (via (Test 2))
            (into
-            (Sub (from Leaf0) (via (Test 5))
+            (Sub (from Leaf0) (via (Test 3))
              (into
-              (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-               (via (Test 7))
+              (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+               (via (Test 4))
                (into
                 (Sub
-                 (from (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-                 (via (Test 9))
+                 (from (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+                 (via (Test 5))
                  (into
                   (Sub
                    (from
-                    (Sub (from Path) (via (Test 10))
+                    (Sub (from Path) (via (Test 6))
                      (into
-                      (Return (value (Mapn (inputs ((Named (uid (Test 10)))))))))))
-                   (via (Test 12))
+                      (Return (value (Mapn (inputs ((Named (uid (Test 6)))))))))))
+                   (via (Test 7))
                    (into
-                    (Sub (from Leaf0) (via (Test 13))
+                    (Sub (from Leaf0) (via (Test 8))
                      (into
                       (Sub
                        (from
-                        (Return (value (Mapn (inputs ((Named (uid (Test 13)))))))))
-                       (via (Test 15))
+                        (Return (value (Mapn (inputs ((Named (uid (Test 8)))))))))
+                       (via (Test 9))
                        (into
                         (Sub
                          (from
-                          (Return
-                           (value (Mapn (inputs ((Named (uid (Test 13)))))))))
-                         (via (Test 17))
+                          (Return (value (Mapn (inputs ((Named (uid (Test 8)))))))))
+                         (via (Test 10))
                          (into
-                          (Sub (from Leaf0) (via (Test 18))
+                          (Sub (from Leaf0) (via (Test 11))
                            (into
                             (Sub
                              (from
                               (Return
-                               (value (Mapn (inputs ((Named (uid (Test 18)))))))))
-                             (via (Test 20))
+                               (value (Mapn (inputs ((Named (uid (Test 11)))))))))
+                             (via (Test 12))
                              (into
                               (Sub
                                (from
                                 (Return
-                                 (value (Mapn (inputs ((Named (uid (Test 18)))))))))
-                               (via (Test 22))
+                                 (value (Mapn (inputs ((Named (uid (Test 11)))))))))
+                               (via (Test 13))
                                (into
                                 (Sub
                                  (from
-                                  (Sub (from Path) (via (Test 23))
+                                  (Sub (from Path) (via (Test 14))
                                    (into
                                     (Return
                                      (value
-                                      (Mapn (inputs ((Named (uid (Test 23)))))))))))
-                                 (via (Test 25))
+                                      (Mapn (inputs ((Named (uid (Test 14)))))))))))
+                                 (via (Test 15))
                                  (into
                                   (Sub
                                    (from
-                                    (Sub (from Path) (via (Test 26))
+                                    (Sub (from Path) (via (Test 16))
                                      (into
                                       (Return
                                        (value
-                                        (Mapn (inputs ((Named (uid (Test 26)))))))))))
-                                   (via (Test 28))
+                                        (Mapn (inputs ((Named (uid (Test 16)))))))))))
+                                   (via (Test 17))
                                    (into
                                     (Sub
                                      (from
                                       (Return
                                        (value
-                                        (Mapn (inputs ((Named (uid (Test 28)))))))))
-                                     (via (Test 30))
+                                        (Mapn (inputs ((Named (uid (Test 17)))))))))
+                                     (via (Test 18))
                                      (into
                                       (Sub
                                        (from
@@ -226,16 +225,16 @@ module%test [@name "Comparing graph structure."] _ = struct
                                          (value
                                           (Mapn
                                            (inputs
-                                            ((Named (uid (Test 30)))
-                                             (Named (uid (Test 25)))))))))
-                                       (via (Test 32))
+                                            ((Named (uid (Test 18)))
+                                             (Named (uid (Test 15)))))))))
+                                       (via (Test 19))
                                        (into
                                         (Return
                                          (value
                                           (Mapn
                                            (inputs
-                                            ((Named (uid (Test 32)))
-                                             (Named (uid (Test 12))))))))))))))))))))))))))))))))))))))))))
+                                            ((Named (uid (Test 19)))
+                                             (Named (uid (Test 7))))))))))))))))))))))))))))))))))))))))))
       |}]
   ;;
 end
@@ -252,136 +251,136 @@ module%test [@name "With Assocs."] _ = struct
           (Sub (from Leaf0) (via (Test 0))
            (into
             (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-             (via (Test 2))
+             (via (Test 1))
              (into
               (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-               (via (Test 4))
+               (via (Test 2))
                (into
-                (Sub (from Leaf0) (via (Test 5))
+                (Sub (from Leaf0) (via (Test 3))
                  (into
                   (Sub
-                   (from (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-                   (via (Test 7))
+                   (from (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+                   (via (Test 4))
                    (into
                     (Sub
                      (from
-                      (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-                     (via (Test 9))
+                      (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+                     (via (Test 5))
                      (into
                       (Return
                        (value
                         (Mapn
-                         (inputs ((Named (uid (Test 7))) (Named (uid (Test 9)))))))))))))))))))))
-         (via (Test 11))
+                         (inputs ((Named (uid (Test 4))) (Named (uid (Test 5)))))))))))))))))))))
+         (via (Test 6))
          (into
-          (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 11)))))))))
-           (via (Test 13))
+          (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 6)))))))))
+           (via (Test 7))
            (into
-            (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 11)))))))))
-             (via (Test 15))
+            (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 6)))))))))
+             (via (Test 8))
              (into
               (Sub
                (from
-                (Sub (from Path) (via (Test 16))
-                 (into (Return (value (Mapn (inputs ((Named (uid (Test 16)))))))))))
-               (via (Test 18))
+                (Sub (from Path) (via (Test 9))
+                 (into (Return (value (Mapn (inputs ((Named (uid (Test 9)))))))))))
+               (via (Test 10))
                (into
                 (Sub
                  (from
                   (Sub
                    (from
-                    (Sub (from Path) (via (Test 19))
+                    (Sub (from Path) (via (Test 11))
                      (into
-                      (Return (value (Mapn (inputs ((Named (uid (Test 19)))))))))))
-                   (via (Test 21))
+                      (Return (value (Mapn (inputs ((Named (uid (Test 11)))))))))))
+                   (via (Test 12))
                    (into
-                    (Return (value (Mapn (inputs ((Named (uid (Test 21)))))))))))
-                 (via (Test 23))
+                    (Return (value (Mapn (inputs ((Named (uid (Test 12)))))))))))
+                 (via (Test 13))
                  (into
                   (Return
                    (value
                     (Mapn
-                     (inputs ((Named (uid (Test 23))) (Named (uid (Test 18)))))))))))))))))))
-       (via (Test 25))
+                     (inputs ((Named (uid (Test 13))) (Named (uid (Test 10)))))))))))))))))))
+       (via (Test 14))
        (into
-        (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 25)))))))))
-         (via (Test 27))
+        (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 14)))))))))
+         (via (Test 15))
          (into
-          (Sub (from (Leaf_incr (input (Named (uid (Test 27)))))) (via (Test 28))
+          (Sub (from (Leaf_incr (input (Named (uid (Test 15)))))) (via (Test 16))
            (into
-            (Assoc (map (Named (uid (Test 28)))) (key_id (Test 29))
-             (cmp_id (Test 30)) (data_id (Test 31))
+            (Assoc (map (Named (uid (Test 16)))) (key_id (Test 17))
+             (cmp_id (Test 18)) (data_id (Test 19))
              (by
               (Sub
                (from
-                (Sub (from Leaf0) (via (Test 32))
+                (Sub (from Leaf0) (via (Test 20))
                  (into
                   (Sub
                    (from
-                    (Return (value (Mapn (inputs ((Named (uid (Test 32)))))))))
-                   (via (Test 34))
+                    (Return (value (Mapn (inputs ((Named (uid (Test 20)))))))))
+                   (via (Test 21))
                    (into
                     (Sub
                      (from
-                      (Return (value (Mapn (inputs ((Named (uid (Test 32)))))))))
-                     (via (Test 36))
+                      (Return (value (Mapn (inputs ((Named (uid (Test 20)))))))))
+                     (via (Test 22))
                      (into
-                      (Sub (from Leaf0) (via (Test 37))
+                      (Sub (from Leaf0) (via (Test 23))
                        (into
                         (Sub
                          (from
                           (Return
-                           (value (Mapn (inputs ((Named (uid (Test 37)))))))))
-                         (via (Test 39))
+                           (value (Mapn (inputs ((Named (uid (Test 23)))))))))
+                         (via (Test 24))
                          (into
                           (Sub
                            (from
                             (Return
-                             (value (Mapn (inputs ((Named (uid (Test 37)))))))))
-                           (via (Test 41))
+                             (value (Mapn (inputs ((Named (uid (Test 23)))))))))
+                           (via (Test 25))
                            (into
                             (Return
                              (value
                               (Mapn
                                (inputs
-                                ((Named (uid (Test 39))) (Named (uid (Test 41)))))))))))))))))))))
-               (via (Test 43))
+                                ((Named (uid (Test 24))) (Named (uid (Test 25)))))))))))))))))))))
+               (via (Test 26))
                (into
                 (Sub
-                 (from (Return (value (Mapn (inputs ((Named (uid (Test 43)))))))))
-                 (via (Test 45))
+                 (from (Return (value (Mapn (inputs ((Named (uid (Test 26)))))))))
+                 (via (Test 27))
                  (into
                   (Sub
                    (from
-                    (Return (value (Mapn (inputs ((Named (uid (Test 43)))))))))
-                   (via (Test 47))
+                    (Return (value (Mapn (inputs ((Named (uid (Test 26)))))))))
+                   (via (Test 28))
                    (into
                     (Sub
                      (from
-                      (Sub (from Path) (via (Test 48))
+                      (Sub (from Path) (via (Test 29))
                        (into
-                        (Return (value (Mapn (inputs ((Named (uid (Test 48)))))))))))
-                     (via (Test 50))
+                        (Return (value (Mapn (inputs ((Named (uid (Test 29)))))))))))
+                     (via (Test 30))
                      (into
                       (Sub
                        (from
                         (Sub
                          (from
-                          (Sub (from Path) (via (Test 51))
+                          (Sub (from Path) (via (Test 31))
                            (into
                             (Return
-                             (value (Mapn (inputs ((Named (uid (Test 51)))))))))))
-                         (via (Test 53))
+                             (value (Mapn (inputs ((Named (uid (Test 31)))))))))))
+                         (via (Test 32))
                          (into
                           (Return
-                           (value (Mapn (inputs ((Named (uid (Test 53)))))))))))
-                       (via (Test 55))
+                           (value (Mapn (inputs ((Named (uid (Test 32)))))))))))
+                       (via (Test 33))
                        (into
                         (Return
                          (value
                           (Mapn
                            (inputs
-                            ((Named (uid (Test 55))) (Named (uid (Test 50))))))))))))))))))))))))))
+                            ((Named (uid (Test 33))) (Named (uid (Test 30))))))))))))))))))))))))))
       |}]
   ;;
 
@@ -392,38 +391,38 @@ module%test [@name "With Assocs."] _ = struct
       (Sub (from Leaf0) (via (Test 0))
        (into
         (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-         (via (Test 2))
+         (via (Test 1))
          (into
           (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-           (via (Test 4))
+           (via (Test 2))
            (into
-            (Sub (from Leaf0) (via (Test 5))
+            (Sub (from Leaf0) (via (Test 3))
              (into
-              (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-               (via (Test 7))
+              (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+               (via (Test 4))
                (into
                 (Sub
-                 (from (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-                 (via (Test 9))
+                 (from (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+                 (via (Test 5))
                  (into
                   (Sub
                    (from
-                    (Sub (from Path) (via (Test 10))
+                    (Sub (from Path) (via (Test 6))
                      (into
-                      (Return (value (Mapn (inputs ((Named (uid (Test 10)))))))))))
-                   (via (Test 12))
+                      (Return (value (Mapn (inputs ((Named (uid (Test 6)))))))))))
+                   (via (Test 7))
                    (into
                     (Sub
                      (from
-                      (Sub (from Path) (via (Test 13))
+                      (Sub (from Path) (via (Test 8))
                        (into
-                        (Return (value (Mapn (inputs ((Named (uid (Test 13)))))))))))
-                     (via (Test 15))
+                        (Return (value (Mapn (inputs ((Named (uid (Test 8)))))))))))
+                     (via (Test 9))
                      (into
                       (Sub
                        (from
-                        (Return (value (Mapn (inputs ((Named (uid (Test 15)))))))))
-                       (via (Test 17))
+                        (Return (value (Mapn (inputs ((Named (uid (Test 9)))))))))
+                       (via (Test 10))
                        (into
                         (Sub
                          (from
@@ -431,77 +430,77 @@ module%test [@name "With Assocs."] _ = struct
                            (value
                             (Mapn
                              (inputs
-                              ((Named (uid (Test 17))) (Named (uid (Test 12)))))))))
-                         (via (Test 19))
+                              ((Named (uid (Test 10))) (Named (uid (Test 7)))))))))
+                         (via (Test 11))
                          (into
                           (Sub
                            (from
                             (Return
-                             (value (Mapn (inputs ((Named (uid (Test 19)))))))))
-                           (via (Test 21))
+                             (value (Mapn (inputs ((Named (uid (Test 11)))))))))
+                           (via (Test 12))
                            (into
-                            (Sub (from (Leaf_incr (input (Named (uid (Test 21))))))
-                             (via (Test 22))
+                            (Sub (from (Leaf_incr (input (Named (uid (Test 12))))))
+                             (via (Test 13))
                              (into
-                              (Assoc (map (Named (uid (Test 22))))
-                               (key_id (Test 23)) (cmp_id (Test 24))
-                               (data_id (Test 25))
+                              (Assoc (map (Named (uid (Test 13))))
+                               (key_id (Test 14)) (cmp_id (Test 15))
+                               (data_id (Test 16))
                                (by
-                                (Sub (from Leaf0) (via (Test 26))
+                                (Sub (from Leaf0) (via (Test 17))
                                  (into
                                   (Sub
                                    (from
                                     (Return
                                      (value
-                                      (Mapn (inputs ((Named (uid (Test 26)))))))))
-                                   (via (Test 28))
+                                      (Mapn (inputs ((Named (uid (Test 17)))))))))
+                                   (via (Test 18))
                                    (into
                                     (Sub
                                      (from
                                       (Return
                                        (value
-                                        (Mapn (inputs ((Named (uid (Test 26)))))))))
-                                     (via (Test 30))
+                                        (Mapn (inputs ((Named (uid (Test 17)))))))))
+                                     (via (Test 19))
                                      (into
-                                      (Sub (from Leaf0) (via (Test 31))
+                                      (Sub (from Leaf0) (via (Test 20))
                                        (into
                                         (Sub
                                          (from
                                           (Return
                                            (value
                                             (Mapn
-                                             (inputs ((Named (uid (Test 31)))))))))
-                                         (via (Test 33))
+                                             (inputs ((Named (uid (Test 20)))))))))
+                                         (via (Test 21))
                                          (into
                                           (Sub
                                            (from
                                             (Return
                                              (value
                                               (Mapn
-                                               (inputs ((Named (uid (Test 31)))))))))
-                                           (via (Test 35))
+                                               (inputs ((Named (uid (Test 20)))))))))
+                                           (via (Test 22))
                                            (into
                                             (Sub
                                              (from
-                                              (Sub (from Path) (via (Test 36))
+                                              (Sub (from Path) (via (Test 23))
                                                (into
                                                 (Return
                                                  (value
                                                   (Mapn
                                                    (inputs
-                                                    ((Named (uid (Test 36)))))))))))
-                                             (via (Test 38))
+                                                    ((Named (uid (Test 23)))))))))))
+                                             (via (Test 24))
                                              (into
                                               (Sub
                                                (from
-                                                (Sub (from Path) (via (Test 39))
+                                                (Sub (from Path) (via (Test 25))
                                                  (into
                                                   (Return
                                                    (value
                                                     (Mapn
                                                      (inputs
-                                                      ((Named (uid (Test 39)))))))))))
-                                               (via (Test 41))
+                                                      ((Named (uid (Test 25)))))))))))
+                                               (via (Test 26))
                                                (into
                                                 (Sub
                                                  (from
@@ -509,15 +508,15 @@ module%test [@name "With Assocs."] _ = struct
                                                    (value
                                                     (Mapn
                                                      (inputs
-                                                      ((Named (uid (Test 41)))))))))
-                                                 (via (Test 43))
+                                                      ((Named (uid (Test 26)))))))))
+                                                 (via (Test 27))
                                                  (into
                                                   (Return
                                                    (value
                                                     (Mapn
                                                      (inputs
-                                                      ((Named (uid (Test 43)))
-                                                       (Named (uid (Test 38))))))))))))))))))))))))))))))))))))))))))))))))))))
+                                                      ((Named (uid (Test 27)))
+                                                       (Named (uid (Test 24))))))))))))))))))))))))))))))))))))))))))))))))))))
       |}]
   ;;
 end
@@ -534,141 +533,141 @@ module%test [@name "With match%sub."] _ = struct
           (Sub (from Leaf0) (via (Test 0))
            (into
             (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-             (via (Test 2))
+             (via (Test 1))
              (into
               (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-               (via (Test 4))
+               (via (Test 2))
                (into
-                (Sub (from Leaf0) (via (Test 5))
+                (Sub (from Leaf0) (via (Test 3))
                  (into
                   (Sub
-                   (from (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-                   (via (Test 7))
+                   (from (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+                   (via (Test 4))
                    (into
                     (Sub
                      (from
-                      (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-                     (via (Test 9))
+                      (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+                     (via (Test 5))
                      (into
                       (Return
                        (value
                         (Mapn
-                         (inputs ((Named (uid (Test 7))) (Named (uid (Test 9)))))))))))))))))))))
-         (via (Test 11))
+                         (inputs ((Named (uid (Test 4))) (Named (uid (Test 5)))))))))))))))))))))
+         (via (Test 6))
          (into
-          (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 11)))))))))
-           (via (Test 13))
+          (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 6)))))))))
+           (via (Test 7))
            (into
-            (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 11)))))))))
-             (via (Test 15))
+            (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 6)))))))))
+             (via (Test 8))
              (into
               (Sub
                (from
-                (Sub (from Path) (via (Test 16))
-                 (into (Return (value (Mapn (inputs ((Named (uid (Test 16)))))))))))
-               (via (Test 18))
+                (Sub (from Path) (via (Test 9))
+                 (into (Return (value (Mapn (inputs ((Named (uid (Test 9)))))))))))
+               (via (Test 10))
                (into
                 (Sub
                  (from
                   (Sub
                    (from
-                    (Sub (from Path) (via (Test 19))
+                    (Sub (from Path) (via (Test 11))
                      (into
-                      (Return (value (Mapn (inputs ((Named (uid (Test 19)))))))))))
-                   (via (Test 21))
+                      (Return (value (Mapn (inputs ((Named (uid (Test 11)))))))))))
+                   (via (Test 12))
                    (into
-                    (Return (value (Mapn (inputs ((Named (uid (Test 21)))))))))))
-                 (via (Test 23))
+                    (Return (value (Mapn (inputs ((Named (uid (Test 12)))))))))))
+                 (via (Test 13))
                  (into
                   (Return
                    (value
                     (Mapn
-                     (inputs ((Named (uid (Test 23))) (Named (uid (Test 18)))))))))))))))))))
-       (via (Test 25))
+                     (inputs ((Named (uid (Test 13))) (Named (uid (Test 10)))))))))))))))))))
+       (via (Test 14))
        (into
-        (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 25)))))))))
-         (via (Test 27))
+        (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 14)))))))))
+         (via (Test 15))
          (into
-          (Switch (match_ (Mapn (inputs ((Named (uid (Test 27)))))))
+          (Switch (match_ (Mapn (inputs ((Named (uid (Test 15)))))))
            (arms
-            ((Return (value (Constant (id (Test 29)))))
-             (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 27)))))))))
-              (via (Test 31))
-              (into (Return (value (Mapn (inputs ((Named (uid (Test 31))))))))))
+            ((Return (value Constant))
+             (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 15)))))))))
+              (via (Test 16))
+              (into (Return (value (Mapn (inputs ((Named (uid (Test 16))))))))))
              (Sub
               (from
                (Sub
                 (from
-                 (Sub (from Leaf0) (via (Test 33))
+                 (Sub (from Leaf0) (via (Test 17))
                   (into
                    (Sub
                     (from
-                     (Return (value (Mapn (inputs ((Named (uid (Test 33)))))))))
-                    (via (Test 35))
+                     (Return (value (Mapn (inputs ((Named (uid (Test 17)))))))))
+                    (via (Test 18))
                     (into
                      (Sub
                       (from
-                       (Return (value (Mapn (inputs ((Named (uid (Test 33)))))))))
-                      (via (Test 37))
+                       (Return (value (Mapn (inputs ((Named (uid (Test 17)))))))))
+                      (via (Test 19))
                       (into
-                       (Sub (from Leaf0) (via (Test 38))
+                       (Sub (from Leaf0) (via (Test 20))
                         (into
                          (Sub
                           (from
                            (Return
-                            (value (Mapn (inputs ((Named (uid (Test 38)))))))))
-                          (via (Test 40))
+                            (value (Mapn (inputs ((Named (uid (Test 20)))))))))
+                          (via (Test 21))
                           (into
                            (Sub
                             (from
                              (Return
-                              (value (Mapn (inputs ((Named (uid (Test 38)))))))))
-                            (via (Test 42))
+                              (value (Mapn (inputs ((Named (uid (Test 20)))))))))
+                            (via (Test 22))
                             (into
                              (Return
                               (value
                                (Mapn
                                 (inputs
-                                 ((Named (uid (Test 40))) (Named (uid (Test 42)))))))))))))))))))))
-                (via (Test 44))
+                                 ((Named (uid (Test 21))) (Named (uid (Test 22)))))))))))))))))))))
+                (via (Test 23))
                 (into
                  (Sub
-                  (from (Return (value (Mapn (inputs ((Named (uid (Test 44)))))))))
-                  (via (Test 46))
+                  (from (Return (value (Mapn (inputs ((Named (uid (Test 23)))))))))
+                  (via (Test 24))
                   (into
                    (Sub
                     (from
-                     (Return (value (Mapn (inputs ((Named (uid (Test 44)))))))))
-                    (via (Test 48))
+                     (Return (value (Mapn (inputs ((Named (uid (Test 23)))))))))
+                    (via (Test 25))
                     (into
                      (Sub
                       (from
-                       (Sub (from Path) (via (Test 49))
+                       (Sub (from Path) (via (Test 26))
                         (into
-                         (Return (value (Mapn (inputs ((Named (uid (Test 49)))))))))))
-                      (via (Test 51))
+                         (Return (value (Mapn (inputs ((Named (uid (Test 26)))))))))))
+                      (via (Test 27))
                       (into
                        (Sub
                         (from
                          (Sub
                           (from
-                           (Sub (from Path) (via (Test 52))
+                           (Sub (from Path) (via (Test 28))
                             (into
                              (Return
-                              (value (Mapn (inputs ((Named (uid (Test 52)))))))))))
-                          (via (Test 54))
+                              (value (Mapn (inputs ((Named (uid (Test 28)))))))))))
+                          (via (Test 29))
                           (into
                            (Return
-                            (value (Mapn (inputs ((Named (uid (Test 54)))))))))))
-                        (via (Test 56))
+                            (value (Mapn (inputs ((Named (uid (Test 29)))))))))))
+                        (via (Test 30))
                         (into
                          (Return
                           (value
                            (Mapn
                             (inputs
-                             ((Named (uid (Test 56))) (Named (uid (Test 51)))))))))))))))))))
-              (via (Test 58))
-              (into (Return (value (Mapn (inputs ((Named (uid (Test 58)))))))))))))))))
+                             ((Named (uid (Test 30))) (Named (uid (Test 27)))))))))))))))))))
+              (via (Test 31))
+              (into (Return (value (Mapn (inputs ((Named (uid (Test 31)))))))))))))))))
       |}]
   ;;
 
@@ -679,38 +678,38 @@ module%test [@name "With match%sub."] _ = struct
       (Sub (from Leaf0) (via (Test 0))
        (into
         (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-         (via (Test 2))
+         (via (Test 1))
          (into
           (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 0)))))))))
-           (via (Test 4))
+           (via (Test 2))
            (into
-            (Sub (from Leaf0) (via (Test 5))
+            (Sub (from Leaf0) (via (Test 3))
              (into
-              (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-               (via (Test 7))
+              (Sub (from (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+               (via (Test 4))
                (into
                 (Sub
-                 (from (Return (value (Mapn (inputs ((Named (uid (Test 5)))))))))
-                 (via (Test 9))
+                 (from (Return (value (Mapn (inputs ((Named (uid (Test 3)))))))))
+                 (via (Test 5))
                  (into
                   (Sub
                    (from
-                    (Sub (from Path) (via (Test 10))
+                    (Sub (from Path) (via (Test 6))
                      (into
-                      (Return (value (Mapn (inputs ((Named (uid (Test 10)))))))))))
-                   (via (Test 12))
+                      (Return (value (Mapn (inputs ((Named (uid (Test 6)))))))))))
+                   (via (Test 7))
                    (into
                     (Sub
                      (from
-                      (Sub (from Path) (via (Test 13))
+                      (Sub (from Path) (via (Test 8))
                        (into
-                        (Return (value (Mapn (inputs ((Named (uid (Test 13)))))))))))
-                     (via (Test 15))
+                        (Return (value (Mapn (inputs ((Named (uid (Test 8)))))))))))
+                     (via (Test 9))
                      (into
                       (Sub
                        (from
-                        (Return (value (Mapn (inputs ((Named (uid (Test 15)))))))))
-                       (via (Test 17))
+                        (Return (value (Mapn (inputs ((Named (uid (Test 9)))))))))
+                       (via (Test 10))
                        (into
                         (Sub
                          (from
@@ -718,89 +717,89 @@ module%test [@name "With match%sub."] _ = struct
                            (value
                             (Mapn
                              (inputs
-                              ((Named (uid (Test 17))) (Named (uid (Test 12)))))))))
-                         (via (Test 19))
+                              ((Named (uid (Test 10))) (Named (uid (Test 7)))))))))
+                         (via (Test 11))
                          (into
                           (Sub
                            (from
                             (Return
-                             (value (Mapn (inputs ((Named (uid (Test 19)))))))))
-                           (via (Test 21))
+                             (value (Mapn (inputs ((Named (uid (Test 11)))))))))
+                           (via (Test 12))
                            (into
                             (Sub
                              (from
                               (Return
-                               (value (Mapn (inputs ((Named (uid (Test 21)))))))))
-                             (via (Test 23))
+                               (value (Mapn (inputs ((Named (uid (Test 12)))))))))
+                             (via (Test 13))
                              (into
-                              (Switch (match_ (Named (uid (Test 23))))
+                              (Switch (match_ (Named (uid (Test 13))))
                                (arms
-                                ((Return (value (Constant (id (Test 24)))))
+                                ((Return (value Constant))
                                  (Sub
                                   (from
                                    (Return
                                     (value
-                                     (Mapn (inputs ((Named (uid (Test 21)))))))))
-                                  (via (Test 26))
+                                     (Mapn (inputs ((Named (uid (Test 12)))))))))
+                                  (via (Test 14))
                                   (into
                                    (Return
                                     (value
-                                     (Mapn (inputs ((Named (uid (Test 26))))))))))
-                                 (Sub (from Leaf0) (via (Test 28))
+                                     (Mapn (inputs ((Named (uid (Test 14))))))))))
+                                 (Sub (from Leaf0) (via (Test 15))
                                   (into
                                    (Sub
                                     (from
                                      (Return
                                       (value
-                                       (Mapn (inputs ((Named (uid (Test 28)))))))))
-                                    (via (Test 30))
+                                       (Mapn (inputs ((Named (uid (Test 15)))))))))
+                                    (via (Test 16))
                                     (into
                                      (Sub
                                       (from
                                        (Return
                                         (value
-                                         (Mapn (inputs ((Named (uid (Test 28)))))))))
-                                      (via (Test 32))
+                                         (Mapn (inputs ((Named (uid (Test 15)))))))))
+                                      (via (Test 17))
                                       (into
-                                       (Sub (from Leaf0) (via (Test 33))
+                                       (Sub (from Leaf0) (via (Test 18))
                                         (into
                                          (Sub
                                           (from
                                            (Return
                                             (value
                                              (Mapn
-                                              (inputs ((Named (uid (Test 33)))))))))
-                                          (via (Test 35))
+                                              (inputs ((Named (uid (Test 18)))))))))
+                                          (via (Test 19))
                                           (into
                                            (Sub
                                             (from
                                              (Return
                                               (value
                                                (Mapn
-                                                (inputs ((Named (uid (Test 33)))))))))
-                                            (via (Test 37))
+                                                (inputs ((Named (uid (Test 18)))))))))
+                                            (via (Test 20))
                                             (into
                                              (Sub
                                               (from
-                                               (Sub (from Path) (via (Test 38))
+                                               (Sub (from Path) (via (Test 21))
                                                 (into
                                                  (Return
                                                   (value
                                                    (Mapn
                                                     (inputs
-                                                     ((Named (uid (Test 38)))))))))))
-                                              (via (Test 40))
+                                                     ((Named (uid (Test 21)))))))))))
+                                              (via (Test 22))
                                               (into
                                                (Sub
                                                 (from
-                                                 (Sub (from Path) (via (Test 41))
+                                                 (Sub (from Path) (via (Test 23))
                                                   (into
                                                    (Return
                                                     (value
                                                      (Mapn
                                                       (inputs
-                                                       ((Named (uid (Test 41)))))))))))
-                                                (via (Test 43))
+                                                       ((Named (uid (Test 23)))))))))))
+                                                (via (Test 24))
                                                 (into
                                                  (Sub
                                                   (from
@@ -808,8 +807,8 @@ module%test [@name "With match%sub."] _ = struct
                                                     (value
                                                      (Mapn
                                                       (inputs
-                                                       ((Named (uid (Test 43)))))))))
-                                                  (via (Test 45))
+                                                       ((Named (uid (Test 24)))))))))
+                                                  (via (Test 25))
                                                   (into
                                                    (Sub
                                                     (from
@@ -817,15 +816,15 @@ module%test [@name "With match%sub."] _ = struct
                                                       (value
                                                        (Mapn
                                                         (inputs
-                                                         ((Named (uid (Test 45)))
-                                                          (Named (uid (Test 40)))))))))
-                                                    (via (Test 47))
+                                                         ((Named (uid (Test 25)))
+                                                          (Named (uid (Test 22)))))))))
+                                                    (via (Test 26))
                                                     (into
                                                      (Return
                                                       (value
                                                        (Mapn
                                                         (inputs
-                                                         ((Named (uid (Test 47)))))))))))))))))))))))))))))))))))))))))))))))))))))))
+                                                         ((Named (uid (Test 26)))))))))))))))))))))))))))))))))))))))))))))))))))))))
       |}]
   ;;
 end

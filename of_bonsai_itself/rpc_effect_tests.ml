@@ -715,21 +715,16 @@ let%expect_test "multiple polling_state_rpc" =
   let map = Bonsai.Var.value map_var in
   let computation =
     let open Bonsai.Let_syntax in
-    Bonsai.assoc
-      (module Int)
-      map
-      ~f:(fun key _data ->
-        let%sub dispatcher =
-          Rpc_effect.Polling_state_rpc.dispatcher
-            polling_state_rpc
-            ~where_to_connect:
-              (Value.return
-                 (Rpc_effect.Where_to_connect.self
-                    ~on_conn_failure:Retry_until_success
-                    ()))
-        in
-        let%arr dispatcher and key in
-        dispatcher key)
+    Bonsai.assoc (module Int) map ~f:(fun key _data ->
+      let%sub dispatcher =
+        Rpc_effect.Polling_state_rpc.dispatcher
+          polling_state_rpc
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+      in
+      let%arr dispatcher and key in
+      dispatcher key)
   in
   let handle =
     Handle.create
@@ -2219,23 +2214,18 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
     let map_var = Bonsai.Var.create (Int.Map.of_alist_exn [ 1, (); 2, (); 10, () ]) in
     let map = Bonsai.Var.value map_var in
     let computation =
-      Bonsai.assoc
-        (module Int)
-        map
-        ~f:(fun key _data ->
-          Rpc_effect.Polling_state_rpc.poll
-            ~sexp_of_query:[%sexp_of: Int.t]
-            ~sexp_of_response:[%sexp_of: Int.t]
-            ~equal_query:[%equal: Int.t]
-            ~equal_response:[%equal: Int.t]
-            polling_state_rpc
-            ~where_to_connect:
-              (Value.return
-                 (Rpc_effect.Where_to_connect.self
-                    ~on_conn_failure:Retry_until_success
-                    ()))
-            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-            key)
+      Bonsai.assoc (module Int) map ~f:(fun key _data ->
+        Rpc_effect.Polling_state_rpc.poll
+          ~sexp_of_query:[%sexp_of: Int.t]
+          ~sexp_of_response:[%sexp_of: Int.t]
+          ~equal_query:[%equal: Int.t]
+          ~equal_response:[%equal: Int.t]
+          polling_state_rpc
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+          ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          key)
     in
     let handle =
       Handle.create
@@ -2351,24 +2341,19 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
     let map_var = Bonsai.Var.create (Int.Map.of_alist_exn [ 1, (); 2, (); 10, () ]) in
     let map = Bonsai.Var.value map_var in
     let computation =
-      Bonsai.assoc
-        (module Int)
-        map
-        ~f:(fun key _data ->
-          Rpc_effect.Polling_state_rpc.poll
-            ~sexp_of_query:[%sexp_of: Int.t]
-            ~sexp_of_response:[%sexp_of: Int.t]
-            ~equal_query:[%equal: Int.t]
-            ~equal_response:[%equal: Int.t]
-            polling_state_rpc
-            ~clear_when_deactivated:false
-            ~where_to_connect:
-              (Value.return
-                 (Rpc_effect.Where_to_connect.self
-                    ~on_conn_failure:Retry_until_success
-                    ()))
-            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-            key)
+      Bonsai.assoc (module Int) map ~f:(fun key _data ->
+        Rpc_effect.Polling_state_rpc.poll
+          ~sexp_of_query:[%sexp_of: Int.t]
+          ~sexp_of_response:[%sexp_of: Int.t]
+          ~equal_query:[%equal: Int.t]
+          ~equal_response:[%equal: Int.t]
+          polling_state_rpc
+          ~clear_when_deactivated:false
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+          ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          key)
     in
     let handle =
       Handle.create
@@ -2876,23 +2861,18 @@ module%test [@name "Rpc.poll"] _ = struct
     let map_var = Bonsai.Var.create (Int.Map.of_alist_exn [ 1, (); 2, (); 10, () ]) in
     let map = Bonsai.Var.value map_var in
     let computation =
-      Bonsai.assoc
-        (module Int)
-        map
-        ~f:(fun key _data ->
-          Rpc_effect.Rpc.poll
-            ~sexp_of_query:[%sexp_of: Int.t]
-            ~sexp_of_response:[%sexp_of: Int.t]
-            ~equal_query:[%equal: Int.t]
-            ~equal_response:[%equal: Int.t]
-            rpc
-            ~where_to_connect:
-              (Value.return
-                 (Rpc_effect.Where_to_connect.self
-                    ~on_conn_failure:Retry_until_success
-                    ()))
-            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-            key)
+      Bonsai.assoc (module Int) map ~f:(fun key _data ->
+        Rpc_effect.Rpc.poll
+          ~sexp_of_query:[%sexp_of: Int.t]
+          ~sexp_of_response:[%sexp_of: Int.t]
+          ~equal_query:[%equal: Int.t]
+          ~equal_response:[%equal: Int.t]
+          rpc
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+          ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          key)
     in
     let handle =
       Handle.create
@@ -3002,24 +2982,19 @@ module%test [@name "Rpc.poll"] _ = struct
     let map_var = Bonsai.Var.create (Int.Map.of_alist_exn [ 1, (); 2, (); 10, () ]) in
     let map = Bonsai.Var.value map_var in
     let computation =
-      Bonsai.assoc
-        (module Int)
-        map
-        ~f:(fun key _data ->
-          Rpc_effect.Rpc.poll
-            ~sexp_of_query:[%sexp_of: Int.t]
-            ~sexp_of_response:[%sexp_of: Int.t]
-            ~equal_query:[%equal: Int.t]
-            ~equal_response:[%equal: Int.t]
-            rpc
-            ~clear_when_deactivated:false
-            ~where_to_connect:
-              (Value.return
-                 (Rpc_effect.Where_to_connect.self
-                    ~on_conn_failure:Retry_until_success
-                    ()))
-            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-            key)
+      Bonsai.assoc (module Int) map ~f:(fun key _data ->
+        Rpc_effect.Rpc.poll
+          ~sexp_of_query:[%sexp_of: Int.t]
+          ~sexp_of_response:[%sexp_of: Int.t]
+          ~equal_query:[%equal: Int.t]
+          ~equal_response:[%equal: Int.t]
+          rpc
+          ~clear_when_deactivated:false
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+          ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          key)
     in
     let handle =
       Handle.create

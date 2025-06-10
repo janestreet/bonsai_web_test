@@ -38,7 +38,6 @@ depends: [
   "ppx_jane"
   "ppx_pattern_bind"
   "streamable"
-  "testable_timeout"
   "textutils"
   "toplayer"
   "versioned_polling_state_rpc"

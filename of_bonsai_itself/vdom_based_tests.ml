@@ -18,16 +18,11 @@ let%expect_test "recursive component" =
   let rec tree input path =
     let%sub { M.label; children } = return input in
     let%sub children =
-      Bonsai.assoc
-        (module Int)
-        children
-        ~f:(fun index child ->
-          let path = Bonsai.Value.map2 index path ~f:List.cons in
-          let%sub child =
-            (Bonsai.lazy_ [@alert "-deprecated"]) (lazy (tree child path))
-          in
-          let%arr child and index in
-          Vdom.Node.div [ Vdom.Node.textf "%d" index; child ])
+      Bonsai.assoc (module Int) children ~f:(fun index child ->
+        let path = Bonsai.Value.map2 index path ~f:List.cons in
+        let%sub child = (Bonsai.lazy_ [@alert "-deprecated"]) (lazy (tree child path)) in
+        let%arr child and index in
+        Vdom.Node.div [ Vdom.Node.textf "%d" index; child ])
     in
     let%sub state =
       Bonsai.state 0 ~sexp_of_model:[%sexp_of: Int.t] ~equal:[%equal: Int.t]
