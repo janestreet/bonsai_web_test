@@ -715,21 +715,16 @@ let%expect_test "multiple polling_state_rpc" =
   let map = Bonsai.Var.value map_var in
   let computation =
     let open Bonsai.Let_syntax in
-    Bonsai.assoc
-      (module Int)
-      map
-      ~f:(fun key _data ->
-        let%sub dispatcher =
-          Rpc_effect.Polling_state_rpc.dispatcher
-            polling_state_rpc
-            ~where_to_connect:
-              (Value.return
-                 (Rpc_effect.Where_to_connect.self
-                    ~on_conn_failure:Retry_until_success
-                    ()))
-        in
-        let%arr dispatcher and key in
-        dispatcher key)
+    Bonsai.assoc (module Int) map ~f:(fun key _data ->
+      let%sub dispatcher =
+        Rpc_effect.Polling_state_rpc.dispatcher
+          polling_state_rpc
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+      in
+      let%arr dispatcher and key in
+      dispatcher key)
   in
   let handle =
     Handle.create
@@ -1603,6 +1598,46 @@ module%test [@name "Status.state"] _ = struct
       |}];
     return ()
   ;;
+
+  let%expect_test "on_change with custom effects" =
+    let connection, connector = make_connection_and_connector () in
+    let component graph =
+      let where_to_connect =
+        Value.return
+          (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())
+      in
+      let callback =
+        Value.return (fun new_state ->
+          Effect.print_s [%sexp (new_state : Rpc_effect.Status.State.t)])
+      in
+      Rpc_effect.Status.on_change ~where_to_connect ~callback graph;
+      Value.return ()
+    in
+    let handle =
+      Handle.create
+        ~connectors:(fun _ -> connector)
+        (Result_spec.sexp (module Unit))
+        component
+    in
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    Handle.recompute_view_until_stable handle;
+    [%expect {| Connecting |}];
+    let%bind () = next_connection connection in
+    Handle.recompute_view_until_stable handle;
+    [%expect {| Connected |}];
+    let%bind () = kill_connection connection in
+    Handle.recompute_view_until_stable handle;
+    [%expect
+      {|
+      (Disconnected
+       (("Connection closed by local side:" Rpc.Connection.close)
+        (connection_description <created-directly>)))
+      |}];
+    let%bind () = next_connection connection in
+    Handle.recompute_view_until_stable handle;
+    [%expect {| Connected |}];
+    return ()
+  ;;
 end
 
 module%test [@name "persistent connection failure to connect"] _ = struct
@@ -2219,23 +2254,18 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
     let map_var = Bonsai.Var.create (Int.Map.of_alist_exn [ 1, (); 2, (); 10, () ]) in
     let map = Bonsai.Var.value map_var in
     let computation =
-      Bonsai.assoc
-        (module Int)
-        map
-        ~f:(fun key _data ->
-          Rpc_effect.Polling_state_rpc.poll
-            ~sexp_of_query:[%sexp_of: Int.t]
-            ~sexp_of_response:[%sexp_of: Int.t]
-            ~equal_query:[%equal: Int.t]
-            ~equal_response:[%equal: Int.t]
-            polling_state_rpc
-            ~where_to_connect:
-              (Value.return
-                 (Rpc_effect.Where_to_connect.self
-                    ~on_conn_failure:Retry_until_success
-                    ()))
-            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-            key)
+      Bonsai.assoc (module Int) map ~f:(fun key _data ->
+        Rpc_effect.Polling_state_rpc.poll
+          ~sexp_of_query:[%sexp_of: Int.t]
+          ~sexp_of_response:[%sexp_of: Int.t]
+          ~equal_query:[%equal: Int.t]
+          ~equal_response:[%equal: Int.t]
+          polling_state_rpc
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+          ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          key)
     in
     let handle =
       Handle.create
@@ -2351,24 +2381,19 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
     let map_var = Bonsai.Var.create (Int.Map.of_alist_exn [ 1, (); 2, (); 10, () ]) in
     let map = Bonsai.Var.value map_var in
     let computation =
-      Bonsai.assoc
-        (module Int)
-        map
-        ~f:(fun key _data ->
-          Rpc_effect.Polling_state_rpc.poll
-            ~sexp_of_query:[%sexp_of: Int.t]
-            ~sexp_of_response:[%sexp_of: Int.t]
-            ~equal_query:[%equal: Int.t]
-            ~equal_response:[%equal: Int.t]
-            polling_state_rpc
-            ~clear_when_deactivated:false
-            ~where_to_connect:
-              (Value.return
-                 (Rpc_effect.Where_to_connect.self
-                    ~on_conn_failure:Retry_until_success
-                    ()))
-            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-            key)
+      Bonsai.assoc (module Int) map ~f:(fun key _data ->
+        Rpc_effect.Polling_state_rpc.poll
+          ~sexp_of_query:[%sexp_of: Int.t]
+          ~sexp_of_response:[%sexp_of: Int.t]
+          ~equal_query:[%equal: Int.t]
+          ~equal_response:[%equal: Int.t]
+          polling_state_rpc
+          ~clear_when_deactivated:false
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+          ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          key)
     in
     let handle =
       Handle.create
@@ -2876,23 +2901,18 @@ module%test [@name "Rpc.poll"] _ = struct
     let map_var = Bonsai.Var.create (Int.Map.of_alist_exn [ 1, (); 2, (); 10, () ]) in
     let map = Bonsai.Var.value map_var in
     let computation =
-      Bonsai.assoc
-        (module Int)
-        map
-        ~f:(fun key _data ->
-          Rpc_effect.Rpc.poll
-            ~sexp_of_query:[%sexp_of: Int.t]
-            ~sexp_of_response:[%sexp_of: Int.t]
-            ~equal_query:[%equal: Int.t]
-            ~equal_response:[%equal: Int.t]
-            rpc
-            ~where_to_connect:
-              (Value.return
-                 (Rpc_effect.Where_to_connect.self
-                    ~on_conn_failure:Retry_until_success
-                    ()))
-            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-            key)
+      Bonsai.assoc (module Int) map ~f:(fun key _data ->
+        Rpc_effect.Rpc.poll
+          ~sexp_of_query:[%sexp_of: Int.t]
+          ~sexp_of_response:[%sexp_of: Int.t]
+          ~equal_query:[%equal: Int.t]
+          ~equal_response:[%equal: Int.t]
+          rpc
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+          ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          key)
     in
     let handle =
       Handle.create
@@ -3002,24 +3022,19 @@ module%test [@name "Rpc.poll"] _ = struct
     let map_var = Bonsai.Var.create (Int.Map.of_alist_exn [ 1, (); 2, (); 10, () ]) in
     let map = Bonsai.Var.value map_var in
     let computation =
-      Bonsai.assoc
-        (module Int)
-        map
-        ~f:(fun key _data ->
-          Rpc_effect.Rpc.poll
-            ~sexp_of_query:[%sexp_of: Int.t]
-            ~sexp_of_response:[%sexp_of: Int.t]
-            ~equal_query:[%equal: Int.t]
-            ~equal_response:[%equal: Int.t]
-            rpc
-            ~clear_when_deactivated:false
-            ~where_to_connect:
-              (Value.return
-                 (Rpc_effect.Where_to_connect.self
-                    ~on_conn_failure:Retry_until_success
-                    ()))
-            ~every:(Value.return (Time_ns.Span.of_sec 1.0))
-            key)
+      Bonsai.assoc (module Int) map ~f:(fun key _data ->
+        Rpc_effect.Rpc.poll
+          ~sexp_of_query:[%sexp_of: Int.t]
+          ~sexp_of_response:[%sexp_of: Int.t]
+          ~equal_query:[%equal: Int.t]
+          ~equal_response:[%equal: Int.t]
+          rpc
+          ~clear_when_deactivated:false
+          ~where_to_connect:
+            (Value.return
+               (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+          ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          key)
     in
     let handle =
       Handle.create
@@ -3864,6 +3879,215 @@ module%test [@name "Rpc.poll_until_condition_met"] _ = struct
     let%bind () = recompute handle in
     [%expect {| |}];
     Deferred.unit
+  ;;
+end
+
+module%test [@name "RPC responses longer than [retry_interval]"] _ = struct
+  let rpc =
+    Rpc.Rpc.create
+      ~name:"rpc"
+      ~version:0
+      ~bin_query:bin_int
+      ~bin_response:bin_int
+      ~include_in_error_count:Only_on_exn
+  ;;
+
+  module Result_spec = struct
+    type t = (int, int) Rpc_effect.Poll_result.t
+    type incoming = unit
+
+    let view
+      { Rpc_effect.Poll_result.last_ok_response; last_error; inflight_query; refresh = _ }
+      =
+      Sexp.to_string_hum
+        [%message
+          (last_ok_response : (int * int) option)
+            (last_error : (int * Error.t) option)
+            (inflight_query : int option)]
+    ;;
+
+    let incoming
+      { Rpc_effect.Poll_result.last_ok_response = _
+      ; last_error = _
+      ; inflight_query = _
+      ; refresh = _
+      }
+      ()
+      =
+      Effect.Ignore
+    ;;
+  end
+
+  let returns_ok_upon ~ok_ivar =
+    let count = ref 0 in
+    Rpc.Rpc.implement rpc (fun _ _ ->
+      print_endline "received rpc!";
+      let%bind () = Ivar.read ok_ivar in
+      incr count;
+      return !count)
+  ;;
+
+  let poll_computation input_var =
+    Rpc_effect.Rpc.poll
+      ~sexp_of_query:[%sexp_of: Int.t]
+      ~sexp_of_response:[%sexp_of: Int.t]
+      ~equal_query:[%equal: Int.t]
+      ~equal_response:[%equal: Int.t]
+      rpc
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+      ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+      (Bonsai.Var.value input_var)
+  ;;
+
+  let poll_until_ok_computation input_var =
+    Rpc_effect.Rpc.poll_until_ok
+      ~sexp_of_query:[%sexp_of: Int.t]
+      ~sexp_of_response:[%sexp_of: Int.t]
+      ~equal_query:[%equal: Int.t]
+      ~equal_response:[%equal: Int.t]
+      rpc
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+      ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
+      (Bonsai.Var.value input_var)
+  ;;
+
+  let poll_until_condition_met_computation input_var =
+    Rpc_effect.Rpc.poll_until_condition_met
+      ~sexp_of_query:[%sexp_of: Int.t]
+      ~sexp_of_response:[%sexp_of: Int.t]
+      ~equal_query:[%equal: Int.t]
+      ~equal_response:[%equal: Int.t]
+      rpc
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+      ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+      ~condition:(Value.return (fun _ -> `Stop_polling))
+      (Bonsai.Var.value input_var)
+  ;;
+
+  let trisimulate f =
+    let%bind () =
+      f
+        poll_computation
+        ~expect_diff:(fun ~poll ~poll_until_ok:_ ~poll_until_condition_met:_ -> poll ())
+    in
+    let%bind () =
+      f
+        poll_until_ok_computation
+        ~expect_diff:(fun ~poll:_ ~poll_until_ok ~poll_until_condition_met:_ ->
+          poll_until_ok ())
+    in
+    let%bind () =
+      f
+        poll_until_condition_met_computation
+        ~expect_diff:(fun ~poll:_ ~poll_until_ok:_ ~poll_until_condition_met ->
+          poll_until_condition_met ())
+    in
+    return ()
+  ;;
+
+  let%expect_test "Response shorter than 1s" =
+    trisimulate
+    @@ fun poller ~expect_diff ->
+    let input_var = Bonsai.Var.create 1 in
+    let computation = poller input_var in
+    let ok_ivar = Ivar.create () in
+    let handle =
+      Handle.create
+        ~rpc_implementations:[ returns_ok_upon ~ok_ivar ]
+        (module Result_spec)
+        computation
+    in
+    let%bind () = async_show handle in
+    [%expect {| ((last_ok_response ()) (last_error ()) (inflight_query ())) |}];
+    let%bind () = async_recompute_view handle in
+    (* first query received *)
+    [%expect {| received rpc! |}];
+    Handle.advance_clock_by handle (Time_ns.Span.of_sec 0.5);
+    let%bind () = async_recompute_view handle in
+    [%expect {| |}];
+    Ivar.fill_exn ok_ivar ();
+    let%bind () = async_recompute_view handle in
+    let%bind () = async_show handle in
+    (* no query yet... *)
+    [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}];
+    Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
+    let%bind () = async_recompute_view handle in
+    let%bind () = async_show handle in
+    (* [poll] sends another query, but [poll_until_{ok,condition_met}] have stopped *)
+    expect_diff
+      ~poll:(fun () ->
+        [%expect
+          {|
+          ((last_ok_response ((1 1))) (last_error ()) (inflight_query (1)))
+          received rpc!
+          |}])
+      ~poll_until_ok:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_condition_met:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}]);
+    let%bind () = async_show handle in
+    expect_diff
+      ~poll:(fun () ->
+        [%expect {| ((last_ok_response ((1 2))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_ok:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_condition_met:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}]);
+    return ()
+  ;;
+
+  let%expect_test "Response longer than 1s" =
+    trisimulate
+    @@ fun poller ~expect_diff ->
+    let input_var = Bonsai.Var.create 1 in
+    let computation = poller input_var in
+    let ok_ivar = Ivar.create () in
+    let handle =
+      Handle.create
+        ~rpc_implementations:[ returns_ok_upon ~ok_ivar ]
+        (module Result_spec)
+        computation
+    in
+    let%bind () = async_show handle in
+    [%expect {| ((last_ok_response ()) (last_error ()) (inflight_query ())) |}];
+    let%bind () = async_recompute_view handle in
+    (* first query received *)
+    [%expect {| received rpc! |}];
+    Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.5);
+    let%bind () = async_recompute_view handle in
+    let%bind () = async_show handle in
+    (* no second query yet... *)
+    [%expect {| ((last_ok_response ()) (last_error ()) (inflight_query (1))) |}];
+    Ivar.fill_exn ok_ivar ();
+    let%bind () = async_recompute_view handle in
+    let%bind () = async_show handle in
+    (* now, we send second query (only in [ poll ]). *)
+    expect_diff
+      ~poll:(fun () ->
+        [%expect
+          {|
+          ((last_ok_response ((1 1))) (last_error ()) (inflight_query (1)))
+          received rpc!
+          |}])
+      ~poll_until_ok:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_condition_met:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}]);
+    let%bind () = async_show handle in
+    expect_diff
+      ~poll:(fun () ->
+        [%expect {| ((last_ok_response ((1 2))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_ok:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_condition_met:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}]);
+    return ()
   ;;
 end
 

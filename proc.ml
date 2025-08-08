@@ -264,6 +264,11 @@ module Handle = struct
     |> Node_helpers.trigger_hook ~type_id ~name ~arg ~f
   ;;
 
+  let global_keydown ?shift_key_down handle ~get_vdom ~key ~selector =
+    get_element handle ~get_vdom ~selector
+    |> Node_helpers.User_actions.global_keydown ?shift_key_down ~key
+  ;;
+
   let get_hook_value handle ~get_vdom ~selector ~name type_id =
     get_element handle ~get_vdom ~selector |> Node_helpers.get_hook_value ~type_id ~name
   ;;

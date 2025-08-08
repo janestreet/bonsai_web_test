@@ -357,7 +357,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -1,1 +1,19
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -410,7 +410,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -1,1 +1,12
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -452,7 +452,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -1,1 +1,11
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -479,7 +479,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -1,11 +1,12
+      === DIFF HUNK ===
         ((
           0 (
             (rpc_kind (
@@ -546,7 +546,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -1,1 +1,32
+      === DIFF HUNK ===
       -|()
       +|((0 (
       +|   (rpc_kind (
@@ -631,7 +631,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -1,1 +1,20
+      === DIFF HUNK ===
       -|()
       +|((0 (
       +|   (rpc_kind (
@@ -671,7 +671,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -4,17 +4,27
+      === DIFF HUNK ===
              (name     reverse-rpc)
              (version  1)
              (interval Dispatch)))
@@ -716,7 +716,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -3,28 +3,31
+      === DIFF HUNK ===
              Normal
              (name     reverse-rpc)
              (version  1)
@@ -765,7 +765,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -16,18 +16,21
+      === DIFF HUNK ===
              (interval Dispatch)))
            (start_time "1970-01-01 00:00:00Z")
            (query (Sexp_of_provided "basset hound"))
@@ -829,7 +829,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -1,25 +1,39
+      === DIFF HUNK ===
         ((0 (
            (rpc_kind (
              Normal
@@ -906,7 +906,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -1,1 +1,11
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -978,7 +978,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
 
       State
       =========================
-      -1,11 +1,32
+      === DIFF HUNK ===
         ((0 (
            (rpc_kind (
              Normal
@@ -1070,7 +1070,7 @@ module%test [@name "Rpc_effect.Rpc.babel_dispatcher"] _ = struct
 
       State
       =========================
-      -1,1 +1,13
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1132,7 +1132,7 @@ module%test [@name "Rpc_effect.Rpc.streamable_dispatcher"] _ = struct
 
       State
       =========================
-      -1,1 +1,12
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1197,7 +1197,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.dispatcher"] _ = struct
 
       State
       =========================
-      -1,1 +1,14
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1248,7 +1248,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.dispatcher"] _ = struct
 
       State
       =========================
-      -1,1 +1,11
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1275,7 +1275,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.dispatcher"] _ = struct
 
       State
       =========================
-      -1,11 +1,14
+      === DIFF HUNK ===
         ((
           0 (
             (rpc_kind (
@@ -1333,7 +1333,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.dispatcher"] _ = struct
 
       State
       =========================
-      -1,1 +1,11
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1372,7 +1372,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.dispatcher"] _ = struct
 
       State
       =========================
-      -1,11 +1,20
+      === DIFF HUNK ===
         ((0 (
            (rpc_kind (
              Polling_state_rpc
@@ -1422,7 +1422,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.dispatcher"] _ = struct
 
       State
       =========================
-      -3,18 +3,19
+      === DIFF HUNK ===
              Polling_state_rpc
              (name     polling-state-rpc-reverse-rpc)
              (version  1)
@@ -1477,7 +1477,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.dispatcher"] _ = struct
 
       State
       =========================
-      -1,1 +1,14
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1520,7 +1520,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.dispatcher"] _ = struct
 
       State
       =========================
-      -1,14 +1,24
+      === DIFF HUNK ===
         ((0 (
            (rpc_kind (
              Polling_state_rpc
@@ -1599,7 +1599,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.babel_dispatcher"] _ = struct
 
       State
       =========================
-      -1,1 +1,15
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1667,7 +1667,7 @@ module%test [@name "Normal Rpc.Rpc.poll"] _ = struct
 
       State
       =========================
-      -1,1 +1,11
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1692,7 +1692,7 @@ module%test [@name "Normal Rpc.Rpc.poll"] _ = struct
 
       State
       =========================
-      -1,11 +1,12
+      === DIFF HUNK ===
         ((
           0 (
             (rpc_kind (
@@ -1732,7 +1732,7 @@ module%test [@name "Normal Rpc.Rpc.poll"] _ = struct
 
       State
       =========================
-      -1,1 +1,12
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1789,7 +1789,7 @@ module%test [@name "Normal Rpc.Rpc.poll"] _ = struct
 
       State
       =========================
-      -1,1 +1,12
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1850,7 +1850,7 @@ module%test [@name "Rpc_effect.Rpc.babel_poll and babel_poll_until_ok"] _ = stru
 
       State
       =========================
-      -1,1 +1,13
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1910,7 +1910,7 @@ module%test [@name "Rpc_effect.Rpc.babel_poll and babel_poll_until_ok"] _ = stru
 
       State
       =========================
-      -1,1 +1,13
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -1973,7 +1973,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.poll and babel_poll"] _ = struc
 
       State
       =========================
-      -1,1 +1,14
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -2038,7 +2038,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.poll and babel_poll"] _ = struc
 
       State
       =========================
-      -1,1 +1,15
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -2100,7 +2100,7 @@ module%test [@name "Rpc_effect.Rpc.streamable_poll"] _ = struct
 
       State
       =========================
-      -1,1 +1,12
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -2159,7 +2159,7 @@ module%test [@name "Rpc_effect.Rpc.streamable_poll_until_ok"] _ = struct
 
       State
       =========================
-      -1,1 +1,12
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -2477,7 +2477,7 @@ struct
 
       State
       =========================
-      -1,1 +1,12
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (
@@ -2539,7 +2539,7 @@ struct
 
       State
       =========================
-      -1,1 +1,13
+      === DIFF HUNK ===
       -|()
       +|((
       +|  0 (

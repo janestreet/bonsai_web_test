@@ -800,7 +800,7 @@ let%expect_test "comment doesn't crash" =
     {|
     ####### DIFF -INPUT +OUTPUT ########
 
-    -1,1 +1,1
+    === DIFF HUNK ===
     -|<div>Hello! <!--comment --> </div>
     +|<div>Hello!  </div>
 

@@ -3,7 +3,7 @@
  (public_name bonsai_web_test)
  (libraries async_kernel async_rpc_kernel bonsai_test bonsai_web core
    async_kernel.eager_deferred ppx_expect.config_types
-   expect_test_helpers_core patdiff.expect_test_patdiff js_of_ocaml
-   patdiff.kernel virtual_dom.vdom_test_helpers)
+   expect_test_helpers_core js_of_ocaml patdiff.kernel
+   virtual_dom.vdom_test_helpers)
  (preprocess
   (pps ppx_jane js_of_ocaml-ppx ppx_css ppx_pattern_bind bonsai.ppx_bonsai)))
