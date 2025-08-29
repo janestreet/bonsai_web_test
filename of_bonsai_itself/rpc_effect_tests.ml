@@ -852,28 +852,11 @@ let%expect_test "disconnect and re-connect async_durable" =
 ;;
 
 let%expect_test "disconnect and re-connect persistent_connection" =
-  let module Conn =
-    Persistent_connection_kernel.Make (struct
-      type t = Rpc.Connection.t
-
-      let close t = Rpc.Connection.close t
-      let is_closed t = Rpc.Connection.is_closed t
-      let close_finished t = Rpc.Connection.close_finished t
-    end)
-  in
   let implementations = ref [ Rpc.Rpc.implement' rpc_a (fun _ _query -> 0) ] in
-  let connection =
-    Conn.create
-      ~server_name:"test_server"
-      ~connect:(fun () -> create_connection !implementations)
-      ~address:(module Unit)
-      (fun () -> Deferred.Or_error.return ())
-  in
-  let connector =
-    Rpc_effect.Connector.persistent_connection
-      ~on_conn_failure:Retry_until_success
-      (module Conn)
-      connection
+  let conn =
+    Interruptible_persistent_connection.create'
+      ~connection_state:Fn.id
+      ~implementations:(fun () -> !implementations)
   in
   let computation =
     Rpc_effect.Rpc.babel_dispatcher
@@ -884,47 +867,25 @@ let%expect_test "disconnect and re-connect persistent_connection" =
   in
   let handle =
     Handle.create
-      ~connectors:(fun _ -> connector)
+      ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
       (module Int_to_int_or_error)
       computation
   in
   let%bind () = async_do_actions handle [ 0 ] in
   [%expect {| (Ok 0) |}];
-  let%bind () =
-    let connection = Option.value_exn (Conn.current_connection connection) in
-    let%bind () = Rpc.Connection.close connection in
-    Rpc.Connection.close_finished connection
-  in
+  let%bind () = Interruptible_persistent_connection.kill_connection conn in
   implementations := [ Rpc.Rpc.implement' rpc_b (fun _ _query -> 1) ];
-  let%bind _connection = Conn.connected connection in
+  let%bind _connection = Interruptible_persistent_connection.next_connection conn in
   let%bind () = async_do_actions handle [ 0 ] in
   [%expect {| (Ok 1) |}];
   return ()
 ;;
 
 let%expect_test "disconnect and re-connect with polling_state_rpc" =
-  let module Conn =
-    Persistent_connection_kernel.Make (struct
-      type t = Rpc.Connection.t
-
-      let close t = Rpc.Connection.close t
-      let is_closed t = Rpc.Connection.is_closed t
-      let close_finished t = Rpc.Connection.close_finished t
-    end)
-  in
-  let implementations = [ incrementing_polling_state_rpc_implementation () ] in
-  let connection =
-    Conn.create
-      ~server_name:"test_server"
-      ~connect:(fun () -> create_connection implementations)
-      ~address:(module Unit)
-      (fun () -> Deferred.Or_error.return ())
-  in
-  let connector =
-    Rpc_effect.Connector.persistent_connection
-      ~on_conn_failure:Retry_until_success
-      (module Conn)
-      connection
+  let conn =
+    Interruptible_persistent_connection.create
+      ~connection_state:Fn.id
+      [ incrementing_polling_state_rpc_implementation () ]
   in
   let computation =
     Rpc_effect.Polling_state_rpc.dispatcher
@@ -935,7 +896,7 @@ let%expect_test "disconnect and re-connect with polling_state_rpc" =
   in
   let handle =
     Handle.create
-      ~connectors:(fun _ -> connector)
+      ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
       (module Int_to_int_or_error)
       computation
   in
@@ -945,12 +906,8 @@ let%expect_test "disconnect and re-connect with polling_state_rpc" =
     ("For first request" (query 1))
     (Ok 1)
     |}];
-  let%bind () =
-    let connection = Option.value_exn (Conn.current_connection connection) in
-    let%bind () = Rpc.Connection.close connection in
-    Rpc.Connection.close_finished connection
-  in
-  let%bind _connection = Conn.connected connection in
+  let%bind () = Interruptible_persistent_connection.kill_connection conn in
+  let%bind () = Interruptible_persistent_connection.next_connection conn in
   let%bind () = async_do_actions handle [ 2 ] in
   [%expect
     {|
@@ -1362,52 +1319,11 @@ module%test [@name "Rvar tests"] _ = struct
 end
 
 module%test [@name "Status.state"] _ = struct
-  module Conn = Persistent_connection_kernel.Make (struct
-      type t = Rpc.Connection.t
-
-      let close t = Rpc.Connection.close t
-      let is_closed t = Rpc.Connection.is_closed t
-      let close_finished t = Rpc.Connection.close_finished t
-    end)
-
-  module Status_option = struct
-    type t = Rpc_effect.Status.t option [@@deriving sexp_of]
-  end
-
-  let kill_connection connection =
-    let%bind () =
-      connection |> Conn.current_connection |> Option.value_exn |> Rpc.Connection.close
-    in
-    Async_kernel_scheduler.yield_until_no_jobs_remain ()
-  ;;
-
-  let next_connection connection =
-    let%bind _connection = Conn.connected connection in
-    Async_kernel_scheduler.yield_until_no_jobs_remain ()
-  ;;
-
-  let make_connection_and_connector () =
-    let connection =
-      Conn.create
-        ~server_name:"test_server"
-        ~connect:(fun () -> create_connection [])
-        ~address:(module Unit)
-        (fun () -> Deferred.Or_error.return ())
-    in
-    let connector =
-      Rpc_effect.Connector.persistent_connection
-        ~on_conn_failure:Retry_until_success
-        (module Conn)
-        connection
-    in
-    connection, connector
-  ;;
-
   let%expect_test "basic usage" =
-    let connection, connector = make_connection_and_connector () in
+    let conn = Interruptible_persistent_connection.create ~connection_state:Fn.id [] in
     let handle =
       Handle.create
-        ~connectors:(fun _ -> connector)
+        ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
         (Result_spec.sexp (module Rpc_effect.Status))
         (Rpc_effect.Status.state
            ~where_to_connect:
@@ -1422,7 +1338,7 @@ module%test [@name "Status.state"] _ = struct
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     Handle.show handle;
     [%expect {| ((state Connected) (connecting_since ())) |}];
-    let%bind () = kill_connection connection in
+    let%bind () = Interruptible_persistent_connection.kill_connection conn in
     Handle.show handle;
     [%expect
       {|
@@ -1432,17 +1348,17 @@ module%test [@name "Status.state"] _ = struct
           (connection_description <created-directly>))))
        (connecting_since ("1970-01-01 00:00:00Z")))
       |}];
-    let%bind () = next_connection connection in
+    let%bind () = Interruptible_persistent_connection.next_connection conn in
     Handle.show handle;
     [%expect {| ((state Connected) (connecting_since ())) |}];
     return ()
   ;;
 
   let%expect_test "connecting-since" =
-    let connection, connector = make_connection_and_connector () in
+    let conn = Interruptible_persistent_connection.create ~connection_state:Fn.id [] in
     let handle =
       Handle.create
-        ~connectors:(fun _ -> connector)
+        ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
         (Result_spec.sexp (module Rpc_effect.Status))
         (Rpc_effect.Status.state
            ~where_to_connect:
@@ -1459,7 +1375,7 @@ module%test [@name "Status.state"] _ = struct
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     Handle.show handle;
     [%expect {| ((state Connected) (connecting_since ())) |}];
-    let%bind () = kill_connection connection in
+    let%bind () = Interruptible_persistent_connection.kill_connection conn in
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     Handle.show handle;
     [%expect
@@ -1470,15 +1386,19 @@ module%test [@name "Status.state"] _ = struct
           (connection_description <created-directly>))))
        (connecting_since ("1970-01-01 00:00:03Z")))
       |}];
-    let%bind () = next_connection connection in
+    let%bind () = Interruptible_persistent_connection.next_connection conn in
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     Handle.show handle;
     [%expect {| ((state Connected) (connecting_since ())) |}];
     return ()
   ;;
 
+  module Status_option = struct
+    type t = Rpc_effect.Status.t option [@@deriving sexp_of]
+  end
+
   let%expect_test "closing happens when component is inactive" =
-    let connection, connector = make_connection_and_connector () in
+    let conn = Interruptible_persistent_connection.create ~connection_state:Fn.id [] in
     let is_active = Bonsai.Var.create true in
     let component =
       let open Bonsai.Let_syntax in
@@ -1497,7 +1417,7 @@ module%test [@name "Status.state"] _ = struct
     in
     let handle =
       Handle.create
-        ~connectors:(fun _ -> connector)
+        ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
         (Result_spec.sexp (module Status_option))
         component
     in
@@ -1512,7 +1432,7 @@ module%test [@name "Status.state"] _ = struct
     Bonsai.Var.set is_active false;
     Handle.show handle;
     [%expect {| () |}];
-    let%bind () = kill_connection connection in
+    let%bind () = Interruptible_persistent_connection.kill_connection conn in
     Handle.show handle;
     [%expect {| () |}];
     Bonsai.Var.set is_active true;
@@ -1528,14 +1448,14 @@ module%test [@name "Status.state"] _ = struct
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     Handle.show handle;
     [%expect {| (((state Connecting) (connecting_since ("1970-01-01 00:00:00Z")))) |}];
-    let%bind () = next_connection connection in
+    let%bind () = Interruptible_persistent_connection.next_connection conn in
     Handle.show handle;
     [%expect {| (((state Connected) (connecting_since ()))) |}];
     return ()
   ;;
 
   let%expect_test "opening happens when component is inactive" =
-    let _connection, connector = make_connection_and_connector () in
+    let conn = Interruptible_persistent_connection.create ~connection_state:Fn.id [] in
     let is_active = Bonsai.Var.create true in
     let component =
       let open Bonsai.Let_syntax in
@@ -1554,7 +1474,7 @@ module%test [@name "Status.state"] _ = struct
     in
     let handle =
       Handle.create
-        ~connectors:(fun _ -> connector)
+        ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
         (Result_spec.sexp (module Status_option))
         component
     in
@@ -1600,7 +1520,7 @@ module%test [@name "Status.state"] _ = struct
   ;;
 
   let%expect_test "on_change with custom effects" =
-    let connection, connector = make_connection_and_connector () in
+    let conn = Interruptible_persistent_connection.create ~connection_state:Fn.id [] in
     let component graph =
       let where_to_connect =
         Value.return
@@ -1615,17 +1535,17 @@ module%test [@name "Status.state"] _ = struct
     in
     let handle =
       Handle.create
-        ~connectors:(fun _ -> connector)
+        ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
         (Result_spec.sexp (module Unit))
         component
     in
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     Handle.recompute_view_until_stable handle;
     [%expect {| Connecting |}];
-    let%bind () = next_connection connection in
+    let%bind () = Interruptible_persistent_connection.next_connection conn in
     Handle.recompute_view_until_stable handle;
     [%expect {| Connected |}];
-    let%bind () = kill_connection connection in
+    let%bind () = Interruptible_persistent_connection.kill_connection conn in
     Handle.recompute_view_until_stable handle;
     [%expect
       {|
@@ -1633,7 +1553,7 @@ module%test [@name "Status.state"] _ = struct
        (("Connection closed by local side:" Rpc.Connection.close)
         (connection_description <created-directly>)))
       |}];
-    let%bind () = next_connection connection in
+    let%bind () = Interruptible_persistent_connection.next_connection conn in
     Handle.recompute_view_until_stable handle;
     [%expect {| Connected |}];
     return ()
