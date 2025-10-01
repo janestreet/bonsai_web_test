@@ -309,7 +309,7 @@ module%test Streamable_rpc = struct
 
   module Poller_spec = struct
     type t =
-      { poll_result : (Query.t, Response.t) Rpc_effect.Poll_result.t
+      { poll_result : (Query.t, Response.t) Rpc_effect.Poll_result.Legacy_record.t
       ; set_query : int -> unit Effect.t
       }
 
@@ -318,7 +318,7 @@ module%test Streamable_rpc = struct
     let view { poll_result; set_query = _ } =
       let open struct
         type ('query, 'response) poll_result_with_less_noisy_sexp =
-              ('query, 'response) Rpc_effect.Poll_result.t =
+              ('query, 'response) Rpc_effect.Poll_result.Legacy_record.t =
           { last_ok_response : ('query * 'response) option [@sexp.option]
           ; last_error : ('query * Error.t) option [@sexp.option]
           ; inflight_query : 'query option [@sexp.option]
@@ -366,6 +366,7 @@ module%test Streamable_rpc = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         query
     in
     let until_ok_poller query =
@@ -376,6 +377,7 @@ module%test Streamable_rpc = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         query
     in
     let%bind () = f normal_poller ~expect_diff:(fun ~normal ~until_ok:_ -> normal ()) in
@@ -601,6 +603,7 @@ let%expect_test "inactive delivery of a response will be ignored when \
                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
           ~every:(Value.return (Time_ns.Span.of_sec 1.0))
           ~clear_when_deactivated:true
+          ~output_type:Legacy_record
           (Value.return 0)
       in
       return (status >>| Option.some))
@@ -612,7 +615,8 @@ let%expect_test "inactive delivery of a response will be ignored when \
         [ incrementing_polling_state_rpc_implementation ~block_on:block () ]
       (Result_spec.sexp
          (module struct
-           type t = (int, int) Rpc_effect.Poll_result.t option [@@deriving sexp_of]
+           type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t option
+           [@@deriving sexp_of]
          end))
       computation
   in
@@ -657,6 +661,7 @@ let%expect_test "BUG: completing an RPC at the same time as a disconnect" =
             (Value.return
                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
           ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          ~output_type:Legacy_record
           (Value.return 0)
       in
       return (status >>| Option.some))
@@ -668,7 +673,8 @@ let%expect_test "BUG: completing an RPC at the same time as a disconnect" =
         [ incrementing_polling_state_rpc_implementation ~block_on:block () ]
       (Result_spec.sexp
          (module struct
-           type t = (int, int) Rpc_effect.Poll_result.t option [@@deriving sexp_of]
+           type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t option
+           [@@deriving sexp_of]
          end))
       computation
   in
@@ -852,28 +858,11 @@ let%expect_test "disconnect and re-connect async_durable" =
 ;;
 
 let%expect_test "disconnect and re-connect persistent_connection" =
-  let module Conn =
-    Persistent_connection_kernel.Make (struct
-      type t = Rpc.Connection.t
-
-      let close t = Rpc.Connection.close t
-      let is_closed t = Rpc.Connection.is_closed t
-      let close_finished t = Rpc.Connection.close_finished t
-    end)
-  in
   let implementations = ref [ Rpc.Rpc.implement' rpc_a (fun _ _query -> 0) ] in
-  let connection =
-    Conn.create
-      ~server_name:"test_server"
-      ~connect:(fun () -> create_connection !implementations)
-      ~address:(module Unit)
-      (fun () -> Deferred.Or_error.return ())
-  in
-  let connector =
-    Rpc_effect.Connector.persistent_connection
-      ~on_conn_failure:Retry_until_success
-      (module Conn)
-      connection
+  let conn =
+    Interruptible_persistent_connection.create'
+      ~connection_state:Fn.id
+      ~implementations:(fun () -> !implementations)
   in
   let computation =
     Rpc_effect.Rpc.babel_dispatcher
@@ -884,47 +873,25 @@ let%expect_test "disconnect and re-connect persistent_connection" =
   in
   let handle =
     Handle.create
-      ~connectors:(fun _ -> connector)
+      ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
       (module Int_to_int_or_error)
       computation
   in
   let%bind () = async_do_actions handle [ 0 ] in
   [%expect {| (Ok 0) |}];
-  let%bind () =
-    let connection = Option.value_exn (Conn.current_connection connection) in
-    let%bind () = Rpc.Connection.close connection in
-    Rpc.Connection.close_finished connection
-  in
+  let%bind () = Interruptible_persistent_connection.kill_connection conn in
   implementations := [ Rpc.Rpc.implement' rpc_b (fun _ _query -> 1) ];
-  let%bind _connection = Conn.connected connection in
+  let%bind _connection = Interruptible_persistent_connection.next_connection conn in
   let%bind () = async_do_actions handle [ 0 ] in
   [%expect {| (Ok 1) |}];
   return ()
 ;;
 
 let%expect_test "disconnect and re-connect with polling_state_rpc" =
-  let module Conn =
-    Persistent_connection_kernel.Make (struct
-      type t = Rpc.Connection.t
-
-      let close t = Rpc.Connection.close t
-      let is_closed t = Rpc.Connection.is_closed t
-      let close_finished t = Rpc.Connection.close_finished t
-    end)
-  in
-  let implementations = [ incrementing_polling_state_rpc_implementation () ] in
-  let connection =
-    Conn.create
-      ~server_name:"test_server"
-      ~connect:(fun () -> create_connection implementations)
-      ~address:(module Unit)
-      (fun () -> Deferred.Or_error.return ())
-  in
-  let connector =
-    Rpc_effect.Connector.persistent_connection
-      ~on_conn_failure:Retry_until_success
-      (module Conn)
-      connection
+  let conn =
+    Interruptible_persistent_connection.create
+      ~connection_state:Fn.id
+      [ incrementing_polling_state_rpc_implementation () ]
   in
   let computation =
     Rpc_effect.Polling_state_rpc.dispatcher
@@ -935,7 +902,7 @@ let%expect_test "disconnect and re-connect with polling_state_rpc" =
   in
   let handle =
     Handle.create
-      ~connectors:(fun _ -> connector)
+      ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
       (module Int_to_int_or_error)
       computation
   in
@@ -945,12 +912,8 @@ let%expect_test "disconnect and re-connect with polling_state_rpc" =
     ("For first request" (query 1))
     (Ok 1)
     |}];
-  let%bind () =
-    let connection = Option.value_exn (Conn.current_connection connection) in
-    let%bind () = Rpc.Connection.close connection in
-    Rpc.Connection.close_finished connection
-  in
-  let%bind _connection = Conn.connected connection in
+  let%bind () = Interruptible_persistent_connection.kill_connection conn in
+  let%bind () = Interruptible_persistent_connection.next_connection conn in
   let%bind () = async_do_actions handle [ 2 ] in
   [%expect
     {|
@@ -1326,7 +1289,7 @@ module%test [@name "versioned polling state rpc"] _ = struct
 end
 
 module%test [@name "Rvar tests"] _ = struct
-  module Rvar = Rpc_effect.Private.For_tests.Rvar
+  module Rvar = Rpc_effect_kernel.Private.For_tests.Rvar
 
   let%expect_test _ =
     let i = ref 0 in
@@ -1362,52 +1325,11 @@ module%test [@name "Rvar tests"] _ = struct
 end
 
 module%test [@name "Status.state"] _ = struct
-  module Conn = Persistent_connection_kernel.Make (struct
-      type t = Rpc.Connection.t
-
-      let close t = Rpc.Connection.close t
-      let is_closed t = Rpc.Connection.is_closed t
-      let close_finished t = Rpc.Connection.close_finished t
-    end)
-
-  module Status_option = struct
-    type t = Rpc_effect.Status.t option [@@deriving sexp_of]
-  end
-
-  let kill_connection connection =
-    let%bind () =
-      connection |> Conn.current_connection |> Option.value_exn |> Rpc.Connection.close
-    in
-    Async_kernel_scheduler.yield_until_no_jobs_remain ()
-  ;;
-
-  let next_connection connection =
-    let%bind _connection = Conn.connected connection in
-    Async_kernel_scheduler.yield_until_no_jobs_remain ()
-  ;;
-
-  let make_connection_and_connector () =
-    let connection =
-      Conn.create
-        ~server_name:"test_server"
-        ~connect:(fun () -> create_connection [])
-        ~address:(module Unit)
-        (fun () -> Deferred.Or_error.return ())
-    in
-    let connector =
-      Rpc_effect.Connector.persistent_connection
-        ~on_conn_failure:Retry_until_success
-        (module Conn)
-        connection
-    in
-    connection, connector
-  ;;
-
   let%expect_test "basic usage" =
-    let connection, connector = make_connection_and_connector () in
+    let conn = Interruptible_persistent_connection.create ~connection_state:Fn.id [] in
     let handle =
       Handle.create
-        ~connectors:(fun _ -> connector)
+        ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
         (Result_spec.sexp (module Rpc_effect.Status))
         (Rpc_effect.Status.state
            ~where_to_connect:
@@ -1422,7 +1344,7 @@ module%test [@name "Status.state"] _ = struct
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     Handle.show handle;
     [%expect {| ((state Connected) (connecting_since ())) |}];
-    let%bind () = kill_connection connection in
+    let%bind () = Interruptible_persistent_connection.kill_connection conn in
     Handle.show handle;
     [%expect
       {|
@@ -1432,17 +1354,17 @@ module%test [@name "Status.state"] _ = struct
           (connection_description <created-directly>))))
        (connecting_since ("1970-01-01 00:00:00Z")))
       |}];
-    let%bind () = next_connection connection in
+    let%bind () = Interruptible_persistent_connection.next_connection conn in
     Handle.show handle;
     [%expect {| ((state Connected) (connecting_since ())) |}];
     return ()
   ;;
 
   let%expect_test "connecting-since" =
-    let connection, connector = make_connection_and_connector () in
+    let conn = Interruptible_persistent_connection.create ~connection_state:Fn.id [] in
     let handle =
       Handle.create
-        ~connectors:(fun _ -> connector)
+        ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
         (Result_spec.sexp (module Rpc_effect.Status))
         (Rpc_effect.Status.state
            ~where_to_connect:
@@ -1459,7 +1381,7 @@ module%test [@name "Status.state"] _ = struct
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     Handle.show handle;
     [%expect {| ((state Connected) (connecting_since ())) |}];
-    let%bind () = kill_connection connection in
+    let%bind () = Interruptible_persistent_connection.kill_connection conn in
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     Handle.show handle;
     [%expect
@@ -1470,15 +1392,19 @@ module%test [@name "Status.state"] _ = struct
           (connection_description <created-directly>))))
        (connecting_since ("1970-01-01 00:00:03Z")))
       |}];
-    let%bind () = next_connection connection in
+    let%bind () = Interruptible_persistent_connection.next_connection conn in
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     Handle.show handle;
     [%expect {| ((state Connected) (connecting_since ())) |}];
     return ()
   ;;
 
+  module Status_option = struct
+    type t = Rpc_effect.Status.t option [@@deriving sexp_of]
+  end
+
   let%expect_test "closing happens when component is inactive" =
-    let connection, connector = make_connection_and_connector () in
+    let conn = Interruptible_persistent_connection.create ~connection_state:Fn.id [] in
     let is_active = Bonsai.Var.create true in
     let component =
       let open Bonsai.Let_syntax in
@@ -1497,7 +1423,7 @@ module%test [@name "Status.state"] _ = struct
     in
     let handle =
       Handle.create
-        ~connectors:(fun _ -> connector)
+        ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
         (Result_spec.sexp (module Status_option))
         component
     in
@@ -1512,7 +1438,7 @@ module%test [@name "Status.state"] _ = struct
     Bonsai.Var.set is_active false;
     Handle.show handle;
     [%expect {| () |}];
-    let%bind () = kill_connection connection in
+    let%bind () = Interruptible_persistent_connection.kill_connection conn in
     Handle.show handle;
     [%expect {| () |}];
     Bonsai.Var.set is_active true;
@@ -1528,14 +1454,14 @@ module%test [@name "Status.state"] _ = struct
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     Handle.show handle;
     [%expect {| (((state Connecting) (connecting_since ("1970-01-01 00:00:00Z")))) |}];
-    let%bind () = next_connection connection in
+    let%bind () = Interruptible_persistent_connection.next_connection conn in
     Handle.show handle;
     [%expect {| (((state Connected) (connecting_since ()))) |}];
     return ()
   ;;
 
   let%expect_test "opening happens when component is inactive" =
-    let _connection, connector = make_connection_and_connector () in
+    let conn = Interruptible_persistent_connection.create ~connection_state:Fn.id [] in
     let is_active = Bonsai.Var.create true in
     let component =
       let open Bonsai.Let_syntax in
@@ -1554,7 +1480,7 @@ module%test [@name "Status.state"] _ = struct
     in
     let handle =
       Handle.create
-        ~connectors:(fun _ -> connector)
+        ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
         (Result_spec.sexp (module Status_option))
         component
     in
@@ -1596,6 +1522,46 @@ module%test [@name "Status.state"] _ = struct
       ((state (Failed_to_connect (Failure "BUG: no bonsai-rpc handler installed")))
        (connecting_since ("1970-01-01 00:00:00Z")))
       |}];
+    return ()
+  ;;
+
+  let%expect_test "on_change with custom effects" =
+    let conn = Interruptible_persistent_connection.create ~connection_state:Fn.id [] in
+    let component graph =
+      let where_to_connect =
+        Value.return
+          (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())
+      in
+      let callback =
+        Value.return (fun new_state ->
+          Effect.print_s [%sexp (new_state : Rpc_effect.Status.State.t)])
+      in
+      Rpc_effect.Status.on_change ~where_to_connect ~callback graph;
+      Value.return ()
+    in
+    let handle =
+      Handle.create
+        ~connectors:(fun _ -> Interruptible_persistent_connection.connector conn)
+        (Result_spec.sexp (module Unit))
+        component
+    in
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    Handle.recompute_view_until_stable handle;
+    [%expect {| Connecting |}];
+    let%bind () = Interruptible_persistent_connection.next_connection conn in
+    Handle.recompute_view_until_stable handle;
+    [%expect {| Connected |}];
+    let%bind () = Interruptible_persistent_connection.kill_connection conn in
+    Handle.recompute_view_until_stable handle;
+    [%expect
+      {|
+      (Disconnected
+       (("Connection closed by local side:" Rpc.Connection.close)
+        (connection_description <created-directly>)))
+      |}];
+    let%bind () = Interruptible_persistent_connection.next_connection conn in
+    Handle.recompute_view_until_stable handle;
+    [%expect {| Connected |}];
     return ()
   ;;
 end
@@ -1702,9 +1668,10 @@ module%test [@name "persistent connection failure to connect"] _ = struct
         ~every:(Value.return (Time_ns.Span.of_sec 1.))
         (Value.return 0)
         ~where_to_connect
+        ~output_type:Legacy_record
     in
     let%arr.Bonsai rpc in
-    Rpc_effect.Poll_result.sexp_of_t sexp_of_int sexp_of_int rpc
+    Rpc_effect.Poll_result.Legacy_record.sexp_of_t sexp_of_int sexp_of_int rpc
   ;;
 
   let%expect_test "regular poll, on_conn_failure:Retry_until_success" =
@@ -1769,9 +1736,10 @@ module%test [@name "persistent connection failure to connect"] _ = struct
         ~every:(Value.return (Time_ns.Span.of_sec 1.))
         (Value.return 0)
         ~where_to_connect
+        ~output_type:Legacy_record
     in
     let%arr.Bonsai rpc in
-    Rpc_effect.Poll_result.sexp_of_t sexp_of_int sexp_of_string rpc
+    Rpc_effect.Poll_result.Legacy_record.sexp_of_t sexp_of_int sexp_of_string rpc
   ;;
 
   let%expect_test "babel poll, on_conn_failure:Retry_until_success" =
@@ -1840,6 +1808,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -1847,7 +1816,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~rpc_implementations:[ incrementing_polling_state_rpc_implementation () ]
         (Result_spec.sexp
            (module struct
-             type t = (int, int) Rpc_effect.Poll_result.t [@@deriving sexp_of]
+             type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t
+             [@@deriving sexp_of]
            end))
         computation
     in
@@ -1931,6 +1901,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value input_var)
     in
     let bvar = Async_kernel.Bvar.create () in
@@ -1939,7 +1910,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~rpc_implementations:
           [ incrementing_polling_state_rpc_implementation ~block_on:bvar () ]
         (module struct
-          type t = (int, int) Rpc_effect.Poll_result.t [@@deriving sexp_of]
+          type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t [@@deriving sexp_of]
           type incoming = unit
 
           let view status = Sexp.to_string ([%sexp_of: t] status)
@@ -2027,6 +1998,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -2034,7 +2006,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~rpc_implementations:[ incrementing_polling_state_rpc_implementation () ]
         (Result_spec.sexp
            (module struct
-             type t = (int, int) Rpc_effect.Poll_result.t [@@deriving sexp_of]
+             type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t
+             [@@deriving sexp_of]
            end))
         computation
     in
@@ -2105,6 +2078,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -2112,7 +2086,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~rpc_implementations:[ every_other_error_polling_state_rpc_implementation () ]
         (Result_spec.sexp
            (module struct
-             type t = (int, int) Rpc_effect.Poll_result.t [@@deriving sexp_of]
+             type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t
+             [@@deriving sexp_of]
            end))
         computation
     in
@@ -2225,6 +2200,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
             (Value.return
                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
           ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          ~output_type:Legacy_record
           key)
     in
     let handle =
@@ -2232,7 +2208,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~rpc_implementations:[ incrementing_polling_state_rpc_implementation () ]
         (Result_spec.sexp
            (module struct
-             type t = (int, int) Rpc_effect.Poll_result.t Int.Map.t [@@deriving sexp_of]
+             type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t Int.Map.t
+             [@@deriving sexp_of]
            end))
         computation
     in
@@ -2353,6 +2330,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
             (Value.return
                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
           ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          ~output_type:Legacy_record
           key)
     in
     let handle =
@@ -2360,7 +2338,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         ~rpc_implementations:[ incrementing_polling_state_rpc_implementation () ]
         (Result_spec.sexp
            (module struct
-             type t = (int, int) Rpc_effect.Poll_result.t Int.Map.t [@@deriving sexp_of]
+             type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t Int.Map.t
+             [@@deriving sexp_of]
            end))
         computation
     in
@@ -2449,6 +2428,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value query_var)
     in
     let handle =
@@ -2458,7 +2438,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
           ]
         (Result_spec.sexp
            (module struct
-             type t = (int, int) Rpc_effect.Poll_result.t [@@deriving sexp_of]
+             type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t
+             [@@deriving sexp_of]
            end))
         computation
     in
@@ -2543,6 +2524,7 @@ module%test [@name "Rpc.poll"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -2550,7 +2532,8 @@ module%test [@name "Rpc.poll"] _ = struct
         ~rpc_implementations:[ incrementing_rpc_implementation () ]
         (Result_spec.sexp
            (module struct
-             type t = (int, int) Rpc_effect.Poll_result.t [@@deriving sexp_of]
+             type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t
+             [@@deriving sexp_of]
            end))
         computation
     in
@@ -2632,6 +2615,7 @@ module%test [@name "Rpc.poll"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value input_var)
     in
     let bvar = Async_kernel.Bvar.create () in
@@ -2643,7 +2627,7 @@ module%test [@name "Rpc.poll"] _ = struct
       Handle.create
         ~rpc_implementations:[ incrementing_rpc_implementation ~block_on:bvar () ]
         (module struct
-          type t = (int, int) Rpc_effect.Poll_result.t [@@deriving sexp_of]
+          type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t [@@deriving sexp_of]
           type incoming = unit
 
           let view status = Sexp.to_string ([%sexp_of: t] status)
@@ -2746,6 +2730,7 @@ module%test [@name "Rpc.poll"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -2753,7 +2738,8 @@ module%test [@name "Rpc.poll"] _ = struct
         ~rpc_implementations:[ every_other_error_rpc_implementation () ]
         (Result_spec.sexp
            (module struct
-             type t = (int, int) Rpc_effect.Poll_result.t [@@deriving sexp_of]
+             type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t
+             [@@deriving sexp_of]
            end))
         computation
     in
@@ -2872,6 +2858,7 @@ module%test [@name "Rpc.poll"] _ = struct
             (Value.return
                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
           ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          ~output_type:Legacy_record
           key)
     in
     let handle =
@@ -2879,7 +2866,8 @@ module%test [@name "Rpc.poll"] _ = struct
         ~rpc_implementations:[ incrementing_rpc_implementation () ]
         (Result_spec.sexp
            (module struct
-             type t = (int, int) Rpc_effect.Poll_result.t Int.Map.t [@@deriving sexp_of]
+             type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t Int.Map.t
+             [@@deriving sexp_of]
            end))
         computation
     in
@@ -2994,6 +2982,7 @@ module%test [@name "Rpc.poll"] _ = struct
             (Value.return
                (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
           ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+          ~output_type:Legacy_record
           key)
     in
     let handle =
@@ -3001,7 +2990,8 @@ module%test [@name "Rpc.poll"] _ = struct
         ~rpc_implementations:[ incrementing_rpc_implementation () ]
         (Result_spec.sexp
            (module struct
-             type t = (int, int) Rpc_effect.Poll_result.t Int.Map.t [@@deriving sexp_of]
+             type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t Int.Map.t
+             [@@deriving sexp_of]
            end))
         computation
     in
@@ -3098,11 +3088,15 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
   ;;
 
   module Result_spec = struct
-    type t = (int, int) Rpc_effect.Poll_result.t
+    type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t
     type incoming = Refresh
 
     let view
-      { Rpc_effect.Poll_result.last_ok_response; last_error; inflight_query; refresh = _ }
+      { Rpc_effect.Poll_result.Legacy_record.last_ok_response
+      ; last_error
+      ; inflight_query
+      ; refresh = _
+      }
       =
       Sexp.to_string_hum
         [%message
@@ -3112,7 +3106,7 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
     ;;
 
     let incoming
-      { Rpc_effect.Poll_result.last_ok_response = _
+      { Rpc_effect.Poll_result.Legacy_record.last_ok_response = _
       ; last_error = _
       ; inflight_query = _
       ; refresh
@@ -3136,6 +3130,7 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -3188,6 +3183,7 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -3272,6 +3268,7 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
           (Value.return
              (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
         ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.Var.value input_var)
     in
     let handle =
@@ -3328,11 +3325,9 @@ module%test [@name "multi-poller"] _ = struct
         ()
     in
     let%arr input in
-    { Rpc_effect.Poll_result.last_ok_response = Some (input, "hello")
-    ; last_error = None
-    ; inflight_query = None
-    ; refresh = Effect.Ignore
-    }
+    Rpc_effect.Poll_result.For_testing.create
+      ~last_ok_response:(input, "hello", Time_ns.epoch)
+      ()
   ;;
 
   let%expect_test "single multi-poller" =
@@ -3341,7 +3336,10 @@ module%test [@name "multi-poller"] _ = struct
         Bonsai_web.Rpc_effect.Shared_poller.custom_create (module Int) ~f:dummy_poller
       in
       let%sub lookup =
-        Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5)
+        Bonsai_web.Rpc_effect.Shared_poller.lookup
+          poller
+          ~output_type:Legacy_record
+          (Value.return 5)
       in
       let%arr lookup in
       [%message "" ~_:(lookup.last_ok_response : (int * string) option)]
@@ -3368,8 +3366,18 @@ module%test [@name "multi-poller"] _ = struct
       let%sub poller =
         Bonsai_web.Rpc_effect.Shared_poller.custom_create (module Int) ~f:dummy_poller
       in
-      let%sub a = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5) in
-      let%sub b = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5) in
+      let%sub a =
+        Bonsai_web.Rpc_effect.Shared_poller.lookup
+          poller
+          ~output_type:Legacy_record
+          (Value.return 5)
+      in
+      let%sub b =
+        Bonsai_web.Rpc_effect.Shared_poller.lookup
+          poller
+          ~output_type:Legacy_record
+          (Value.return 5)
+      in
       let%arr a and b in
       [%message
         ""
@@ -3398,8 +3406,18 @@ module%test [@name "multi-poller"] _ = struct
       let%sub poller =
         Bonsai_web.Rpc_effect.Shared_poller.custom_create (module Int) ~f:dummy_poller
       in
-      let%sub a = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5) in
-      let%sub b = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 10) in
+      let%sub a =
+        Bonsai_web.Rpc_effect.Shared_poller.lookup
+          poller
+          ~output_type:Legacy_record
+          (Value.return 5)
+      in
+      let%sub b =
+        Bonsai_web.Rpc_effect.Shared_poller.lookup
+          poller
+          ~output_type:Legacy_record
+          (Value.return 10)
+      in
       let%arr a and b in
       [%message
         ""
@@ -3432,10 +3450,14 @@ module%test [@name "multi-poller"] _ = struct
       in
       let%sub lookup =
         if%sub Bonsai.Var.value bool_var
-        then Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5)
+        then
+          Bonsai_web.Rpc_effect.Shared_poller.lookup
+            poller
+            ~output_type:Legacy_record
+            (Value.return 5)
         else
           Bonsai.const
-            { Rpc_effect.Poll_result.last_ok_response = Some (5, "INACTIVE")
+            { Rpc_effect.Poll_result.Legacy_record.last_ok_response = Some (5, "INACTIVE")
             ; last_error = None
             ; inflight_query = None
             ; refresh = Effect.Ignore
@@ -3476,13 +3498,22 @@ module%test [@name "multi-poller"] _ = struct
       let%sub poller =
         Bonsai_web.Rpc_effect.Shared_poller.custom_create (module Int) ~f:dummy_poller
       in
-      let%sub a = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5) in
+      let%sub a =
+        Bonsai_web.Rpc_effect.Shared_poller.lookup
+          poller
+          ~output_type:Legacy_record
+          (Value.return 5)
+      in
       let%sub b =
         if%sub Bonsai.Var.value bool_var
-        then Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5)
+        then
+          Bonsai_web.Rpc_effect.Shared_poller.lookup
+            poller
+            ~output_type:Legacy_record
+            (Value.return 5)
         else
           Bonsai.const
-            { Rpc_effect.Poll_result.last_ok_response = Some (5, "INACTIVE")
+            { Rpc_effect.Poll_result.Legacy_record.last_ok_response = Some (5, "INACTIVE")
             ; last_error = None
             ; inflight_query = None
             ; refresh = Effect.Ignore
@@ -3520,13 +3551,22 @@ module%test [@name "multi-poller"] _ = struct
       let%sub poller =
         Bonsai_web.Rpc_effect.Shared_poller.custom_create (module Int) ~f:dummy_poller
       in
-      let%sub a = Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 5) in
+      let%sub a =
+        Bonsai_web.Rpc_effect.Shared_poller.lookup
+          poller
+          ~output_type:Legacy_record
+          (Value.return 5)
+      in
       let%sub b =
         if%sub Bonsai.Var.value bool_var
-        then Bonsai_web.Rpc_effect.Shared_poller.lookup poller (Value.return 10)
+        then
+          Bonsai_web.Rpc_effect.Shared_poller.lookup
+            poller
+            ~output_type:Legacy_record
+            (Value.return 10)
         else
           Bonsai.const
-            { Rpc_effect.Poll_result.last_ok_response = Some (10, "INACTIVE")
+            { Rpc_effect.Poll_result.Legacy_record.last_ok_response = Some (10, "INACTIVE")
             ; last_error = None
             ; inflight_query = None
             ; refresh = Effect.Ignore
@@ -3594,11 +3634,15 @@ module%test [@name "Rpc.poll_until_condition_met"] _ = struct
   ;;
 
   module Result_spec = struct
-    type t = (int, int) Rpc_effect.Poll_result.t
+    type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t
     type incoming = Refresh
 
     let view
-      { Rpc_effect.Poll_result.last_ok_response; last_error; inflight_query; refresh = _ }
+      { Rpc_effect.Poll_result.Legacy_record.last_ok_response
+      ; last_error
+      ; inflight_query
+      ; refresh = _
+      }
       =
       Sexp.to_string_hum
         [%message
@@ -3608,7 +3652,7 @@ module%test [@name "Rpc.poll_until_condition_met"] _ = struct
     ;;
 
     let incoming
-      { Rpc_effect.Poll_result.last_ok_response = _
+      { Rpc_effect.Poll_result.Legacy_record.last_ok_response = _
       ; last_error = _
       ; inflight_query = _
       ; refresh
@@ -3639,6 +3683,7 @@ module%test [@name "Rpc.poll_until_condition_met"] _ = struct
         (Value.return
            (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
       ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+      ~output_type:Legacy_record
       (Bonsai.Expert.Var.value query_var)
       graph
   ;;
@@ -3842,6 +3887,222 @@ module%test [@name "Rpc.poll_until_condition_met"] _ = struct
   ;;
 end
 
+module%test [@name "RPC responses longer than [retry_interval]"] _ = struct
+  let rpc =
+    Rpc.Rpc.create
+      ~name:"rpc"
+      ~version:0
+      ~bin_query:bin_int
+      ~bin_response:bin_int
+      ~include_in_error_count:Only_on_exn
+  ;;
+
+  module Result_spec = struct
+    type t = (int, int) Rpc_effect.Poll_result.Legacy_record.t
+    type incoming = unit
+
+    let view
+      { Rpc_effect.Poll_result.Legacy_record.last_ok_response
+      ; last_error
+      ; inflight_query
+      ; refresh = _
+      }
+      =
+      Sexp.to_string_hum
+        [%message
+          (last_ok_response : (int * int) option)
+            (last_error : (int * Error.t) option)
+            (inflight_query : int option)]
+    ;;
+
+    let incoming
+      { Rpc_effect.Poll_result.Legacy_record.last_ok_response = _
+      ; last_error = _
+      ; inflight_query = _
+      ; refresh = _
+      }
+      ()
+      =
+      Effect.Ignore
+    ;;
+  end
+
+  let returns_ok_upon ~ok_ivar =
+    let count = ref 0 in
+    Rpc.Rpc.implement rpc (fun _ _ ->
+      print_endline "received rpc!";
+      let%bind () = Ivar.read ok_ivar in
+      incr count;
+      return !count)
+  ;;
+
+  let poll_computation input_var =
+    Rpc_effect.Rpc.poll
+      ~sexp_of_query:[%sexp_of: Int.t]
+      ~sexp_of_response:[%sexp_of: Int.t]
+      ~equal_query:[%equal: Int.t]
+      ~equal_response:[%equal: Int.t]
+      rpc
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+      ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+      ~output_type:Legacy_record
+      (Bonsai.Var.value input_var)
+  ;;
+
+  let poll_until_ok_computation input_var =
+    Rpc_effect.Rpc.poll_until_ok
+      ~sexp_of_query:[%sexp_of: Int.t]
+      ~sexp_of_response:[%sexp_of: Int.t]
+      ~equal_query:[%equal: Int.t]
+      ~equal_response:[%equal: Int.t]
+      rpc
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+      ~retry_interval:(Value.return (Time_ns.Span.of_sec 1.0))
+      ~output_type:Legacy_record
+      (Bonsai.Var.value input_var)
+  ;;
+
+  let poll_until_condition_met_computation input_var =
+    Rpc_effect.Rpc.poll_until_condition_met
+      ~sexp_of_query:[%sexp_of: Int.t]
+      ~sexp_of_response:[%sexp_of: Int.t]
+      ~equal_query:[%equal: Int.t]
+      ~equal_response:[%equal: Int.t]
+      rpc
+      ~where_to_connect:
+        (Value.return
+           (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
+      ~every:(Value.return (Time_ns.Span.of_sec 1.0))
+      ~condition:(Value.return (fun _ -> `Stop_polling))
+      ~output_type:Legacy_record
+      (Bonsai.Var.value input_var)
+  ;;
+
+  let trisimulate f =
+    let%bind () =
+      f
+        poll_computation
+        ~expect_diff:(fun ~poll ~poll_until_ok:_ ~poll_until_condition_met:_ -> poll ())
+    in
+    let%bind () =
+      f
+        poll_until_ok_computation
+        ~expect_diff:(fun ~poll:_ ~poll_until_ok ~poll_until_condition_met:_ ->
+          poll_until_ok ())
+    in
+    let%bind () =
+      f
+        poll_until_condition_met_computation
+        ~expect_diff:(fun ~poll:_ ~poll_until_ok:_ ~poll_until_condition_met ->
+          poll_until_condition_met ())
+    in
+    return ()
+  ;;
+
+  let%expect_test "Response shorter than 1s" =
+    trisimulate
+    @@ fun poller ~expect_diff ->
+    let input_var = Bonsai.Var.create 1 in
+    let computation = poller input_var in
+    let ok_ivar = Ivar.create () in
+    let handle =
+      Handle.create
+        ~rpc_implementations:[ returns_ok_upon ~ok_ivar ]
+        (module Result_spec)
+        computation
+    in
+    let%bind () = async_show handle in
+    [%expect {| ((last_ok_response ()) (last_error ()) (inflight_query ())) |}];
+    let%bind () = async_recompute_view handle in
+    (* first query received *)
+    [%expect {| received rpc! |}];
+    Handle.advance_clock_by handle (Time_ns.Span.of_sec 0.5);
+    let%bind () = async_recompute_view handle in
+    [%expect {| |}];
+    Ivar.fill_exn ok_ivar ();
+    let%bind () = async_recompute_view handle in
+    let%bind () = async_show handle in
+    (* no query yet... *)
+    [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}];
+    Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
+    let%bind () = async_recompute_view handle in
+    let%bind () = async_show handle in
+    (* [poll] sends another query, but [poll_until_{ok,condition_met}] have stopped *)
+    expect_diff
+      ~poll:(fun () ->
+        [%expect
+          {|
+          ((last_ok_response ((1 1))) (last_error ()) (inflight_query (1)))
+          received rpc!
+          |}])
+      ~poll_until_ok:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_condition_met:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}]);
+    let%bind () = async_show handle in
+    expect_diff
+      ~poll:(fun () ->
+        [%expect {| ((last_ok_response ((1 2))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_ok:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_condition_met:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}]);
+    return ()
+  ;;
+
+  let%expect_test "Response longer than 1s" =
+    trisimulate
+    @@ fun poller ~expect_diff ->
+    let input_var = Bonsai.Var.create 1 in
+    let computation = poller input_var in
+    let ok_ivar = Ivar.create () in
+    let handle =
+      Handle.create
+        ~rpc_implementations:[ returns_ok_upon ~ok_ivar ]
+        (module Result_spec)
+        computation
+    in
+    let%bind () = async_show handle in
+    [%expect {| ((last_ok_response ()) (last_error ()) (inflight_query ())) |}];
+    let%bind () = async_recompute_view handle in
+    (* first query received *)
+    [%expect {| received rpc! |}];
+    Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.5);
+    let%bind () = async_recompute_view handle in
+    let%bind () = async_show handle in
+    (* no second query yet... *)
+    [%expect {| ((last_ok_response ()) (last_error ()) (inflight_query (1))) |}];
+    Ivar.fill_exn ok_ivar ();
+    let%bind () = async_recompute_view handle in
+    let%bind () = async_show handle in
+    (* now, we send second query (only in [ poll ]). *)
+    expect_diff
+      ~poll:(fun () ->
+        [%expect
+          {|
+          ((last_ok_response ((1 1))) (last_error ()) (inflight_query (1)))
+          received rpc!
+          |}])
+      ~poll_until_ok:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_condition_met:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}]);
+    let%bind () = async_show handle in
+    expect_diff
+      ~poll:(fun () ->
+        [%expect {| ((last_ok_response ((1 2))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_ok:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}])
+      ~poll_until_condition_met:(fun () ->
+        [%expect {| ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())) |}]);
+    return ()
+  ;;
+end
+
 let%expect_test "There should be 0 nodes being observed. (This test should ideally be at \
                  the end of the file.)"
   =
@@ -3856,13 +4117,9 @@ let%expect_test "There should be 0 nodes being observed. (This test should ideal
 
 let%expect_test "Check that no introspection recording occurs unless started..." =
   let module Intro = Rpc_effect.For_introspection.For_testing in
-  let introspection_enabled = Intro.get_introspection_supported () in
   let is_recording = Intro.get_is_recording () in
-  print_s [%message (introspection_enabled : bool) (is_recording : bool)];
-  (* This is OK. Introspection being enabled only means that the feature/ability
-     to start recording is available. (e.g. if the devtool panel is opened in wikipedia the
-     abscence of the variable is used to show a nicer error message.) *)
-  [%expect {| ((introspection_enabled true) (is_recording false)) |}];
+  print_s [%message (is_recording : bool)];
+  [%expect {| (is_recording false) |}];
   let popped_events = Intro.pop_events () |> Js_of_ocaml.Js.to_string in
   print_endline popped_events;
   [%expect {| () |}];

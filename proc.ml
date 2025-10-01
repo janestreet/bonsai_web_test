@@ -3,7 +3,7 @@ open! Import
 module Node_helpers = Virtual_dom_test_helpers.Node_helpers
 module Linter = Node_helpers.Linter
 
-let test_selector s = Test_selector.For_bonsai_web_test.css_selector s
+let test_selector s = Test_selector.For_bonsai_web.css_selector s
 
 module Result_spec = struct
   include Bonsai_test.Result_spec
@@ -37,7 +37,7 @@ module Result_spec = struct
             ?path_censoring_message
             ?hash_censoring_message
             ~filter_printed_attributes:
-              (Test_selector.For_bonsai_web_test
+              (Test_selector.For_bonsai_web
                .filter_printed_attributes_with_test_selector_filtering
                  ~filter_printed_attributes)
             ~censor_paths
@@ -164,6 +164,24 @@ module Handle = struct
       ?ctrl_key_down
   ;;
 
+  let mousedown
+    ?extra_event_fields
+    ?shift_key_down
+    ?alt_key_down
+    ?ctrl_key_down
+    handle
+    ~get_vdom
+    ~selector
+    =
+    let element = get_element handle ~get_vdom ~selector in
+    Node_helpers.User_actions.mousedown
+      element
+      ?extra_event_fields
+      ?shift_key_down
+      ?alt_key_down
+      ?ctrl_key_down
+  ;;
+
   let set_checkbox
     ?extra_event_fields
     ?shift_key_down
@@ -262,6 +280,11 @@ module Handle = struct
   let trigger_hook_via handle ~get_vdom ~selector ~name type_id ~f arg =
     get_element handle ~get_vdom ~selector
     |> Node_helpers.trigger_hook ~type_id ~name ~arg ~f
+  ;;
+
+  let global_keydown ?shift_key_down handle ~get_vdom ~key ~selector =
+    get_element handle ~get_vdom ~selector
+    |> Node_helpers.User_actions.global_keydown ?shift_key_down ~key
   ;;
 
   let get_hook_value handle ~get_vdom ~selector ~name type_id =

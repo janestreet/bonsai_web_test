@@ -70,7 +70,7 @@ let%expect_test "recursive component" =
   Expect_test_patdiff.print_patdiff before after;
   [%expect
     {|
-    -1,28 +1,28
+    === DIFF HUNK ===
       <div id="path_0">
         hi 0
         <button @on_click> +1 </button>

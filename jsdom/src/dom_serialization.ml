@@ -79,7 +79,7 @@ let soup_to_string
   of_lambda_soup ~with_visible_whitespace ~depth soup
   |> to_string_html
        ~filter_printed_attributes:
-         (Bonsai_web.Test_selector.For_bonsai_web_test
+         (Bonsai_web.Test_selector.For_bonsai_web
           .filter_printed_attributes_with_test_selector_filtering
             ~filter_printed_attributes)
        ?censor_paths

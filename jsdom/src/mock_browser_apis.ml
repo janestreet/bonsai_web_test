@@ -3,9 +3,10 @@ open Js_of_ocaml
 
 let mock_console_log () =
   let print = Js.wrap_callback (fun s -> print_endline (Js.to_string s)) in
+  let eprint = Js.wrap_callback (fun s -> eprintf "%s\n" (Js.to_string s)) in
   let f =
     Js.Unsafe.pure_js_expr
-      {|(function (print) {
+      {|(function (print, eprint) {
         console.log = (s, ...args) => {
           try {
             print(String(s) + String(args));
@@ -13,16 +14,37 @@ let mock_console_log () =
            print("console.log ERROR: " + String(e));
            }
         }
+        console.debug = (s, ...args) => {
+          try {
+            print("DEBUG: " + String(s) + String(args));
+          } catch (e) {
+           print("console.debug ERROR: " + String(e));
+           }
+        }
+        console.info = (s, ...args) => {
+          try {
+            print("INFO: " + String(s) + String(args));
+          } catch (e) {
+           print("console.info ERROR: " + String(e));
+           }
+        }
         console.warn = (s, ...args) => {
           try {
             print("WARN: " + String(s) + String(args));
           } catch (e) {
-           print("console.log ERROR: " + String(e));
+           print("console.warn ERROR: " + String(e));
+           }
+        }
+        console.error = (s, ...args) => {
+          try {
+            eprint(String(s) + String(args));
+          } catch (e) {
+           eprint("console.error ERROR: " + String(e));
            }
         }
       })|}
   in
-  let () = Js.Unsafe.fun_call f [| Js.Unsafe.inject print |] in
+  let () = Js.Unsafe.fun_call f [| Js.Unsafe.inject print; Js.Unsafe.inject eprint |] in
   ()
 ;;
 
