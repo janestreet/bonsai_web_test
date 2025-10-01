@@ -10,8 +10,8 @@
    expect_test_helpers_core.expect_test_helpers_base expect_test_helpers_core
    patdiff.expect_test_patdiff expectable incr_map incremental js_of_ocaml
    legacy_diffable async_kernel.persistent_connection_kernel
-   polling_state_rpc re streamable bonsai_concrete.ui_incr
-   versioned_polling_state_rpc virtual_dom)
+   polling_state_rpc re bonsai_web.rpc_effect_kernel streamable
+   bonsai_concrete.ui_incr versioned_polling_state_rpc virtual_dom)
  (preprocess
   (pps ppx_jane ppx_pattern_bind bonsai.ppx_bonsai js_of_ocaml-ppx
     ppx_diff.ppx_diff ppx_html streamable.ppx)))

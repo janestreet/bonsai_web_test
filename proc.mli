@@ -118,6 +118,16 @@ module Handle : sig
     -> selector:string
     -> unit
 
+  val mousedown
+    :  ?extra_event_fields:(string * Js_of_ocaml.Js.Unsafe.any) list
+    -> ?shift_key_down:bool
+    -> ?alt_key_down:bool
+    -> ?ctrl_key_down:bool
+    -> ('a, 'b) t
+    -> get_vdom:('a -> Vdom.Node.t)
+    -> selector:string
+    -> unit
+
   val submit_form
     :  ?extra_event_fields:(string * Js_of_ocaml.Js.Unsafe.any) list
     -> ('a, 'b) t

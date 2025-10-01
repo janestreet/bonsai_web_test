@@ -407,10 +407,10 @@ module%test Dynamic_where_to_connect = struct
   end
 
   module Polling_result_spec = struct
-    type t = (int, Response.t) Rpc_effect.Poll_result.t
+    type t = (int, Response.t) Rpc_effect.Poll_result.Legacy_record.t
 
     let view t =
-      let sexp = [%sexp_of: (int, Response.t) Rpc_effect.Poll_result.t] t in
+      let sexp = [%sexp_of: (int, Response.t) Rpc_effect.Poll_result.Legacy_record.t] t in
       print_sexp' ~origin:`Client sexp
     ;;
 
@@ -485,6 +485,7 @@ module%test Dynamic_where_to_connect = struct
         rpc
         ~where_to_connect:(Var.value where_to_connect)
         ~every:(Bonsai.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.return 2)
     in
     Handle.create ~connectors:(connectors ()) (module Polling_result_spec) computation
@@ -694,13 +695,15 @@ module%test Dynamic_where_to_connect = struct
         polling_state_rpc
         ~where_to_connect:(Var.value where_to_connect)
         ~every:(Bonsai.return (Time_ns.Span.of_sec 1.0))
+        ~output_type:Legacy_record
         (Bonsai.return 2)
     in
     Handle.create
       ~connectors:(connectors ())
       (Result_spec.sexp
          (module struct
-           type t = (int, Response.t) Rpc_effect.Poll_result.t [@@deriving sexp_of]
+           type t = (int, Response.t) Rpc_effect.Poll_result.Legacy_record.t
+           [@@deriving sexp_of]
          end))
       computation
   ;;
@@ -967,7 +970,8 @@ module%test Dynamic_where_to_connect = struct
         Bonsai.assoc
           (module String)
           queries
-          ~f:(fun _key data -> Rpc_effect.Shared_poller.lookup shared_poller data)
+          ~f:(fun _key data ->
+            Rpc_effect.Shared_poller.lookup shared_poller data ~output_type:Legacy_record)
           graph
       in
       Bonsai.both results set_polling_queries
@@ -977,7 +981,7 @@ module%test Dynamic_where_to_connect = struct
         ~connectors:(connectors ())
         (module struct
           type t =
-            (int, Response.t) Rpc_effect.Poll_result.t String.Map.t
+            (int, Response.t) Rpc_effect.Poll_result.Legacy_record.t String.Map.t
             * ((string * int) list -> unit Effect.t)
 
           type incoming = (string * int) list
@@ -986,7 +990,7 @@ module%test Dynamic_where_to_connect = struct
             Map.to_alist poll_results
             |> List.map ~f:(fun (name, data) ->
               let data_str =
-                [%sexp_of: (int, Response.t) Rpc_effect.Poll_result.t] data
+                [%sexp_of: (int, Response.t) Rpc_effect.Poll_result.Legacy_record.t] data
                 |> Sexp.to_string_hum
               in
               [%string "%{name}: %{data_str}"])

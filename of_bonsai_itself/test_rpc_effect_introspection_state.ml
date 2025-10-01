@@ -1,5 +1,5 @@
 open! Core
-open Bonsai_introspection_protocol
+open Bonsai_introspection_protocol.Rpc_effect_protocol
 open For_testing
 
 (* This module tests the state machine used for communicating events on rpc effect. *)
@@ -141,7 +141,7 @@ let%expect_test "start -> abort event" =
 
 let%expect_test "Duplicated finished event" =
   (* NOTE: This test demonstrates existing behavior and may or not maybe be a bug.
-     I currently believe that this _might_ be impossible. I think that 
+     I currently believe that this _might_ be impossible. I think that
      printing an error message in this situation is good. *)
   test
     [ dummy_start_event ~id:1
