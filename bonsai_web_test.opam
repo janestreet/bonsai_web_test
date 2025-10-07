@@ -46,7 +46,7 @@ depends: [
   "js_of_ocaml"                 {= "6.0.1+ox"}
   "js_of_ocaml-ppx"             {= "6.0.1+ox"}
   "lambdasoup"                  {>= "0.6.3"}
-  "re"                          {>= "1.8.0"}
+  "re"                          {= "1.14.0+ox"}
 ]
 available: arch != "arm32" & arch != "x86_32"
 synopsis: "A library for testing dynamic bonsai webapps, using Js_of_ocaml"
