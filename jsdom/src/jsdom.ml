@@ -389,7 +389,8 @@ module Handle_experimental = struct
         computation
       |> Bonsai_web.Driver.start ~on_display_for_marking_started:(fun () -> ()) ~get_vdom
     in
-    (* The real Bonsai runtime does a synchronous [recompute] immediately after starting up.*)
+    (* The real Bonsai runtime does a synchronous [recompute] immediately after starting
+       up. *)
     Bonsai_web.Driver.recompute handle;
     { handle
     ; bonsai_time_source
@@ -635,13 +636,14 @@ module Handle_experimental = struct
   ;;
 
   (* As noted in the MLI, [hover] and [unhover] are rough simulations, and can't actually
-   capture moving a mouse across the page from one element to another.
+     capture moving a mouse across the page from one element to another.
 
-   The "real" mechanics are defined here: https://www.w3.org/TR/uievents/#events-mouseevent-event-order
+     The "real" mechanics are defined here:
+     https://www.w3.org/TR/uievents/#events-mouseevent-event-order
 
-   Note that pointer events are fired before mouse events:
-      https://www.w3.org/TR/pointerevents/#mapping-for-devices-that-support-hover
-      https://www.w3.org/TR/pointerevents/#mapping-for-devices-that-do-not-support-hover
+     Note that pointer events are fired before mouse events:
+     https://www.w3.org/TR/pointerevents/#mapping-for-devices-that-support-hover
+     https://www.w3.org/TR/pointerevents/#mapping-for-devices-that-do-not-support-hover
   *)
 
   let hover ~(here : [%call_pos]) harness ~selector =
@@ -656,7 +658,7 @@ module Handle_experimental = struct
   ;;
 
   let unhover ~(here : [%call_pos]) harness =
-    (* [here] is here for API consistency.*)
+    (* [here] is here for API consistency. *)
     ignore (here : Source_code_position.t);
     Option.iter harness.currently_hovered ~f:(fun node ->
       Mouse_event.dispatch' ~kind:Mouse_move node;
@@ -673,8 +675,8 @@ module Handle_experimental = struct
     ({ document_has_focus; filter_printed_attributes; _ } : _ t)
     =
     (* We could use [document.activeElement] or [querySelector(":focus")] to track focus.
-      We prefer [activeElement], because that is set regardless of whether the document
-      itself has focus. *)
+       We prefer [activeElement], because that is set regardless of whether the document
+       itself has focus. *)
     match Dom_html.document##.activeElement |> Js.Opt.to_option with
     | Some elem ->
       let elem =

@@ -27,7 +27,7 @@ let create_handle (computation : String.Set.t Computation.t) : handle =
 
 module%test [@name "Demonstrating hypothetical crash after successful startup."] _ =
 (* NOTE: We have not yet observed this on real apps that have migrated to cont and is
-     solely a hypothetical. *)
+   solely a hypothetical. *)
 struct
   let%expect_test "Proc Syntax" =
     let { handle; set_state } = create_handle (For_proc.basic ~height:10 ~width:7) in
@@ -44,7 +44,7 @@ struct
     [%expect {| () |}];
     set_state Big_computation_is_active;
     (* NOTE: This shows that an app can crash at runtime after having started
-         successfully. *)
+       successfully. *)
     Handle.show handle;
     [%expect {| (17 17 19 19 17 19 19 17 17 19 19) |}]
   ;;

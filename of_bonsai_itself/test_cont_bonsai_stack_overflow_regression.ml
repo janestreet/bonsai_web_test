@@ -13,7 +13,8 @@ module Expect_test_config = struct
 end
 
 let%expect_test "stack overflow regression test: long chain of subs" =
-  (* NOTE: This expect test is a regression test against stack overflows in the Bonsai.Cont API. *)
+  (* NOTE: This expect test is a regression test against stack overflows in the
+     Bonsai.Cont API. *)
   let computation (local_ graph) =
     Fn.apply_n_times
       ~n:1_000
@@ -29,11 +30,12 @@ let%expect_test "stack overflow regression test: long chain of subs" =
 ;;
 
 let run_long_chain_test ~n =
-  (* NOTE: This expect test is a regression test against stack overflows in the Bonsai.Cont API. *)
+  (* NOTE: This expect test is a regression test against stack overflows in the
+     Bonsai.Cont API. *)
   let computation (local_ _graph) =
     let value = ref (Import.opaque_const_value 0) in
-    (* At values higher than this, _Incremental_ starts stack overflowing.
-       A problem for another day... *)
+    (* At values higher than this, _Incremental_ starts stack overflowing. A problem for
+       another day... *)
     for _ = 0 to n do
       value := Bonsai.map !value ~f:(( + ) 1)
     done;
@@ -43,7 +45,8 @@ let run_long_chain_test ~n =
 ;;
 
 let%expect_test "stack overflow regression test: long chain of Value.map" =
-  (* At values higher than this, _Incremental_ starts stack overflowing.  A problem for another day... *)
+  (* At values higher than this, _Incremental_ starts stack overflowing. A problem for
+     another day... *)
   let handle = run_long_chain_test ~n:400 in
   Handle.show handle;
   [%expect {| 401 |}]

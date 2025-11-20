@@ -147,8 +147,8 @@ let%expect_test "test fallback" =
       (module Int_to_int_or_error)
       computation
   in
-  (* Invoking the RPC before providing an implementation of it to the handle
-     will yield an error as a response. *)
+  (* Invoking the RPC before providing an implementation of it to the handle will yield an
+     error as a response. *)
   let%bind.Deferred () = async_do_actions handle [ 0 ] in
   [%expect
     {|
@@ -167,8 +167,8 @@ let%expect_test "provided RPC" =
         (Value.return
            (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ()))
   in
-  (* By providing an implementation to the handle, we get control over the
-     value returned by the RPC. *)
+  (* By providing an implementation to the handle, we get control over the value returned
+     by the RPC. *)
   let handle =
     Handle.create
       ~rpc_implementations:[ Rpc.Rpc.implement' rpc_a (fun _ query -> query) ]
@@ -416,8 +416,8 @@ module%test Streamable_rpc = struct
       let%bind () = async_recompute_view handle in
       let%bind () = async_show handle in
       [%expect {| ((last_ok_response (((number_of_elements 3)) ((0 1) (2 3) (4 5))))) |}];
-      (* RPC is sent if time advances by the interval even if the query does not change only
-         for the "normal" poller, the "until_ok" poller does not resend. *)
+      (* RPC is sent if time advances by the interval even if the query does not change
+         only for the "normal" poller, the "until_ok" poller does not resend. *)
       Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
       let%bind () = async_recompute_view handle in
       let%bind () = async_show handle in
@@ -751,8 +751,8 @@ let%expect_test "multiple polling_state_rpc" =
       end)
       computation
   in
-  (* Since the initial query for each entry of the map does not trigger a diff,
-     we know that each one has a different polling_state_rpc client. *)
+  (* Since the initial query for each entry of the map does not trigger a diff, we know
+     that each one has a different polling_state_rpc client. *)
   let%bind () = async_do_actions handle [ 1 ] in
   [%expect
     {|
@@ -783,9 +783,8 @@ let%expect_test "multiple polling_state_rpc" =
   [%expect {| ("Query does not exist in map" (query 10)) |}];
   Bonsai.Var.update map_var ~f:(fun map -> Map.set map ~key:10 ~data:());
   Handle.recompute_view handle;
-  (* Having been de-activated, this map entry does not trigger a diff
-     computation, thus demonstrating that the server probably isn't holding
-     onto data about this client.. *)
+  (* Having been de-activated, this map entry does not trigger a diff computation, thus
+     demonstrating that the server probably isn't holding onto data about this client.. *)
   let%bind () = async_do_actions handle [ 10 ] in
   [%expect
     {|
@@ -1180,8 +1179,8 @@ module%test [@name "versioned polling state rpc"] _ = struct
         (rpc ((name foo) (version 2)))
         (Ok 16)
         |}];
-      (* simulate the server going down, and then coming back up on a previous
-           version that doesn't have the V2 RPC. *)
+      (* simulate the server going down, and then coming back up on a previous version
+         that doesn't have the V2 RPC. *)
       break_connection ();
       set_implementations [ v1_server_impl ];
       let%bind () = async_do_actions handle [ Query 7 ] in
@@ -1192,8 +1191,8 @@ module%test [@name "versioned polling state rpc"] _ = struct
         (rpc ((name foo) (version 1)))
         (Ok 14)
         |}];
-      (* simulate the server going down, and then coming back up on a
-           that _does_ have the V2 RPC. *)
+      (* simulate the server going down, and then coming back up on a that _does_ have the
+         V2 RPC. *)
       break_connection ();
       set_implementations
         [ T { rpc = V1.rpc; latest_result_of_int = Int.to_string }
@@ -1594,7 +1593,7 @@ module%test [@name "persistent connection failure to connect"] _ = struct
   ;;
 
   (* The choice of [Self] doesn't matter here, because we pass `~connectors` to
-       `Handle.create`, overriding all connection establishment logic. *)
+     `Handle.create`, overriding all connection establishment logic. *)
   let where_to_connect =
     Value.return
       (Rpc_effect.Where_to_connect.self ~on_conn_failure:Retry_until_success ())
@@ -1830,8 +1829,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
       ("For first request" (query 1))
       |}];
     let%bind () = async_show handle in
-    (* Because the clock triggers on activate, the next frame both receives the
-         first request's response and also sets off the first polling request. *)
+    (* Because the clock triggers on activate, the next frame both receives the first
+       request's response and also sets off the first polling request. *)
     [%expect
       {|
       ((last_ok_response ((1 1))) (last_error ()) (inflight_query ())
@@ -1869,9 +1868,9 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
       |}];
     Bonsai.Var.set input_var 2;
     let%bind () = async_show handle in
-    (* We also trigger poll requests on query changes. Observe that the
-         response includes the query that was used to make the response, which
-         in this case is different from the current query. *)
+    (* We also trigger poll requests on query changes. Observe that the response includes
+       the query that was used to make the response, which in this case is different from
+       the current query. *)
     [%expect
       {|
       ((last_ok_response ((1 2))) (last_error ()) (inflight_query ())
@@ -1919,7 +1918,7 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
         computation
     in
     let%bind () = async_show handle in
-    (* On page load; sends rpc request.*)
+    (* On page load; sends rpc request. *)
     [%expect
       {| ((last_ok_response())(last_error())(inflight_query())(refresh <opaque>)) |}];
     Bvar.broadcast bvar ();
@@ -1984,8 +1983,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
   ;;
 
   let%expect_test "basic usage incrementing query ids" =
-    (* Like the basic usage test, but the query changes on each response, to observe
-         the behavior of the [inflight_request] field.*)
+    (* Like the basic usage test, but the query changes on each response, to observe the
+       behavior of the [inflight_request] field. *)
     let input_var = Bonsai.Var.create 1 in
     let computation =
       Rpc_effect.Polling_state_rpc.poll
@@ -2231,7 +2230,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
       |}];
     let%bind () = async_show handle in
     (* NOTE: The order of the response is [2 -> 1 -> 10] hence the response of [1] and
-         [2] are the same because  [2 * 1] = [1 * 2].*)
+
+       [2] are the same because [2 * 1] = [1 * 2]. *)
     [%expect
       {|
       ((1
@@ -2270,8 +2270,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
       |}];
     Bonsai.Var.update map_var ~f:(fun map -> Map.set map ~key:10 ~data:());
     let%bind () = async_show handle in
-    (* since we clear the map entry when it gets de-activated, it does not
-         remember its last response, and thus must poll for it again. *)
+    (* since we clear the map entry when it gets de-activated, it does not remember its
+       last response, and thus must poll for it again. *)
     [%expect
       {|
       ((1
@@ -2398,8 +2398,8 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
       |}];
     Bonsai.Var.update map_var ~f:(fun map -> Map.set map ~key:10 ~data:());
     let%bind () = async_show handle in
-    (* since we do not clear the map entry when it gets de-activated, it does
-         remember its last response, and thus does not need to poll for it again. *)
+    (* since we do not clear the map entry when it gets de-activated, it does remember its
+       last response, and thus does not need to poll for it again. *)
     [%expect
       {|
       ((1
@@ -2452,13 +2452,13 @@ module%test [@name "Polling_state_rpc.poll"] _ = struct
       ("server received rpc" (query 1))
       |}];
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
-    (* set the query to 2. Because we haven't broadcast on [bvar] yet, the
-       first request is still outgoing. *)
+    (* set the query to 2. Because we haven't broadcast on [bvar] yet, the first request
+       is still outgoing. *)
     Bonsai.Var.set query_var 2;
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     let%bind () = async_show handle in
-    (* the client dispatches the rpc, but the inflight_query is still 1 because
-       it needs another frame to catch up.  The server does receive the request though. *)
+    (* the client dispatches the rpc, but the inflight_query is still 1 because it needs
+       another frame to catch up. The server does receive the request though. *)
     [%expect
       {|
       ((last_ok_response ()) (last_error ()) (inflight_query (1))
@@ -2669,8 +2669,8 @@ module%test [@name "Rpc.poll"] _ = struct
       -|((last_ok_response((1 1)))(last_error())(inflight_query(1))(refresh <opaque>))
       +|((last_ok_response((1 2)))(last_error())(inflight_query())(refresh <opaque>))
       |}];
-    (* Doing two actions causes them to be dispatched in sequence, rather
-         than twice in a row. *)
+    (* Doing two actions causes them to be dispatched in sequence, rather than twice in a
+       row. *)
     Handle.do_actions handle [ (); (); () ];
     let%bind () = async_show_diff handle in
     [%expect
@@ -2923,8 +2923,8 @@ module%test [@name "Rpc.poll"] _ = struct
       |}];
     Bonsai.Var.update map_var ~f:(fun map -> Map.set map ~key:10 ~data:());
     let%bind () = async_show handle in
-    (* since we clear the map entry when it gets de-activated, it does not
-         remember its last response, and thus must poll for it again. *)
+    (* since we clear the map entry when it gets de-activated, it does not remember its
+       last response, and thus must poll for it again. *)
     [%expect
       {|
       ((1
@@ -3047,8 +3047,8 @@ module%test [@name "Rpc.poll"] _ = struct
       |}];
     Bonsai.Var.update map_var ~f:(fun map -> Map.set map ~key:10 ~data:());
     let%bind () = async_show handle in
-    (* since we do not clear the map entry when it gets de-activated, it does
-         remember its last response, and thus does not need to poll for it again. *)
+    (* since we do not clear the map entry when it gets de-activated, it does remember its
+       last response, and thus does not need to poll for it again. *)
     [%expect
       {|
       ((1
@@ -3213,10 +3213,10 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
            (rpc_version 0)))))
        (inflight_query ()))
       |}];
-    (* Advancing clock to send another rpc.*)
+    (* Advancing clock to send another rpc. *)
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     let%bind () = async_recompute_view handle in
-    (* Retried rpc sent.*)
+    (* Retried rpc sent. *)
     let%bind () = async_recompute_view handle in
     [%expect {| received rpc! |}];
     let%bind () = async_show handle in
@@ -3237,7 +3237,7 @@ module%test [@name "Rpc.poll_until_ok"] _ = struct
       |}];
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     let%bind () = async_recompute_view handle in
-    (* Retried rpc sent.*)
+    (* Retried rpc sent. *)
     let%bind () = async_recompute_view handle in
     [%expect {| received rpc! |}];
     (* Third rpc returns ok. *)
@@ -3760,10 +3760,10 @@ module%test [@name "Rpc.poll_until_condition_met"] _ = struct
            (rpc_version 0)))))
        (inflight_query ()))
       |}];
-    (* Advancing clock to send another rpc.*)
+    (* Advancing clock to send another rpc. *)
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     let%bind () = async_recompute_view handle in
-    (* Retried rpc sent - also fails.*)
+    (* Retried rpc sent - also fails. *)
     let%bind () = async_recompute_view handle in
     [%expect {| ("received rpc!" (query 1)) |}];
     let%bind () = async_show handle in
@@ -3782,7 +3782,7 @@ module%test [@name "Rpc.poll_until_condition_met"] _ = struct
       |}];
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     let%bind () = async_recompute_view handle in
-    (* Retried rpc sent.*)
+    (* Retried rpc sent. *)
     let%bind () = async_recompute_view handle in
     [%expect {| ("received rpc!" (query 1)) |}];
     (* Third rpc returns ok. *)

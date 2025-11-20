@@ -22,8 +22,8 @@ module%test [@name "Output_type.Abstract"] _ = struct
         ~inflight_query:(3, timestamp)
         ()
     in
-    (* Sexp representation of [t] is nice and succinct, minus timestamps which are kind
-       of noisy *)
+    (* Sexp representation of [t] is nice and succinct, minus timestamps which are kind of
+       noisy *)
     let sexp_of = [%sexp_of: (int, string) Poll_result.t] in
     print_s (sexp_of t);
     [%expect
@@ -159,7 +159,8 @@ module%test [@name "Output_type.Response_state[with_details]"] _ = struct
             ~equal_query:[%equal: int]
             ()
           |> print_response_state;
-          (* Note that this is different from Pending_or_error, which would be Pending here. *)
+          (* Note that this is different from Pending_or_error, which would be Pending
+             here. *)
           expect_diff
             ~without_details:(fun () -> [%expect {| (result (Ok foo)) |}])
             ~with_details:(fun () ->

@@ -3,10 +3,9 @@ module Bonsai_private = Bonsai.Private
 open Bonsai_web
 open Bonsai_web_test
 
-(* This file is a copy of [test_big_computation_stack_overflows.ml] but 
-   it doesn't add any interdependencies between the subcomputations, which should
-   hopefully restrict the stack overflow to Bonsai, and avoid stack overflows that 
-   deep in Incremental. *)
+(* This file is a copy of [test_big_computation_stack_overflows.ml] but it doesn't add any
+   interdependencies between the subcomputations, which should hopefully restrict the
+   stack overflow to Bonsai, and avoid stack overflows that deep in Incremental. *)
 
 let component ~n (local_ graph) =
   for _ = 0 to n do

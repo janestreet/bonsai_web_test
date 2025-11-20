@@ -6,24 +6,22 @@ open Bonsai_web_test_async
 open Bonsai_introspection_protocol
 module State = Rpc_effect_protocol.State
 
-(* At a high level this module contains tests that show that
-   "sending" certain rpc's results in the "correct" introspection
-   state being enqueued for the devtool panel to read. This happens
-   for all the different kinds of rpcs available in rpc effect.
+(* At a high level this module contains tests that show that "sending" certain rpc's
+   results in the "correct" introspection state being enqueued for the devtool panel to
+   read. This happens for all the different kinds of rpcs available in rpc effect.
 
-   Additionally, this also tests what happens in "race-condition"-ey
-   situations. (i.e. what happens if start/stop-recording happens in
-   the middle/edges of other rpc's running? What happens if there are many rpc's
-   happening?/what if an rpc never finishes?) *)
+   Additionally, this also tests what happens in "race-condition"-ey situations. (i.e.
+   what happens if start/stop-recording happens in the middle/edges of other rpc's
+   running? What happens if there are many rpc's happening?/what if an rpc never
+   finishes?) *)
 
-(* We shadow the expect test config with startup/cleanup logic for each
-   of the tests. This logic includes:
+(* We shadow the expect test config with startup/cleanup logic for each of the tests. This
+   logic includes:
 
    - Resetting id counters for "nice" ids.
-   - Asserting that the event queue is empty as a check that the test has seen
-     all events.
-   - Starting/stopping the recording so that recording is only enabled for the duration
-     of the test. *)
+   - Asserting that the event queue is empty as a check that the test has seen all events.
+   - Starting/stopping the recording so that recording is only enabled for the duration of
+     the test. *)
 open struct
   module Expect_test_config = struct
     include Expect_test_config
@@ -623,7 +621,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
         ()
     in
     (* A corgi and a basset hound start a race as participants in Canterbury Park's 2024
-         inagural race. *)
+       inagural race. *)
     Handle.do_actions handle [ Send_rpc "corgi"; Send_rpc "basset hound" ];
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     [%expect
@@ -816,8 +814,8 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
       +|   (response_size 15))))
       |}];
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 10.0);
-    (* Distracted by the cheers and pets of the crowd rooting for him,
-         the corgi instead jumped into the bleachers. *)
+    (* Distracted by the cheers and pets of the crowd rooting for him, the corgi instead
+       jumped into the bleachers. *)
     Ivar.fill_exn corgi_ivar {|Disqualified: Jumped into the bleachers.|};
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     [%expect
@@ -966,23 +964,23 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
       =========================
       No diff!
       |}];
-    (* oh no again! A second rpc started right before recording was re-enabled. Its
-         start event shall be lost to history. *)
+    (* oh no again! A second rpc started right before recording was re-enabled. Its start
+       event shall be lost to history. *)
     Handle.do_actions handle [ Send_rpc "second-rpc" ];
     start_recording ();
     Handle.do_actions handle [ Send_rpc "third-rpc"; Send_rpc "fourth-rpc" ];
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     let _state = consume_and_apply_events ~state () in
     (* This test currently shows current behavior. I think this behavior is correct, or
-         rather, I think this is the least worst behavior. This only happens if
-         stop_recording is called in the middle of the network panel actively recording,
-         however, since stop_recording is meant to only be called after the devtool is
-         closed, I think this is fine.
+       rather, I think this is the least worst behavior. This only happens if
+       stop_recording is called in the middle of the network panel actively recording,
+       however, since stop_recording is meant to only be called after the devtool is
+       closed, I think this is fine.
 
-         - the finish event for first-rpc was missed and is forever unfinished.
-         - the start event for second-rpc was missed and was never recorded. its finish event
-           was observed, but ignored as no start event had been seen.
-         - the third and fourth rpc's were seen and were recorded. *)
+       - the finish event for first-rpc was missed and is forever unfinished.
+       - the start event for second-rpc was missed and was never recorded. its finish
+         event was observed, but ignored as no start event had been seen.
+       - the third and fourth rpc's were seen and were recorded. *)
     [%expect
       {|
       ("RPC started" (query second-rpc))
@@ -1056,12 +1054,11 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
   ;;
 end
 
-(* META comment on the tests below. The tests below test that
-   we are able to correctly index information from the different
-   kinds of rpc's that rpc_effect supports. The race-condition-ey
-   protocol tests occurred above, and the tests below solely test that
-   we retrieve the right rpc kinds from the different rpc's in addition
-   to letting us test getting unique data from individual rpc's in the future... *)
+(* META comment on the tests below. The tests below test that we are able to correctly
+   index information from the different kinds of rpc's that rpc_effect supports. The
+   race-condition-ey protocol tests occurred above, and the tests below solely test that
+   we retrieve the right rpc kinds from the different rpc's in addition to letting us test
+   getting unique data from individual rpc's in the future... *)
 
 module%test [@name "Rpc_effect.Rpc.babel_dispatcher"] _ = struct
   let create_handle ?rpc_implementations () =
@@ -1723,8 +1720,8 @@ module%test [@name "Normal Rpc.Rpc.poll"] _ = struct
   ;;
 
   let%expect_test "dispatching a normal rpc - rpc successful (frame-by-frame)" =
-    (* NOTE: This test shows that we are able to notice the frame delay
-         from the on changes other tests recompute until stability is reached. *)
+    (* NOTE: This test shows that we are able to notice the frame delay from the on
+       changes other tests recompute until stability is reached. *)
     let { Poller_handle.handle; state } =
       create_handle ~rpc_implementations:[ reverse_rpc_implementation ] ()
     in
