@@ -140,9 +140,9 @@ let%expect_test "start -> abort event" =
 ;;
 
 let%expect_test "Duplicated finished event" =
-  (* NOTE: This test demonstrates existing behavior and may or not maybe be a bug.
-     I currently believe that this _might_ be impossible. I think that
-     printing an error message in this situation is good. *)
+  (* NOTE: This test demonstrates existing behavior and may or not maybe be a bug. I
+     currently believe that this _might_ be impossible. I think that printing an error
+     message in this situation is good. *)
   test
     [ dummy_start_event ~id:1
     ; dummy_finish_event ~id:1 ~response:(dummy_response "first")
@@ -219,9 +219,9 @@ let%expect_test "Seeing a finish event before having seen a start event." =
         ~response:(Ok (Sexp_of_provided [%message "I should not appear"]))
     ];
   (* NOTE: If we have not previously seen the start event for an rpc previously before we
-     do not do anything. This situation might happen when the dev tool panel is opened and then
-     closed, although since the right behavior we want would be to [clear] the event queue
-     regardless, I think ignoring this message is correct. *)
+     do not do anything. This situation might happen when the dev tool panel is opened and
+     then closed, although since the right behavior we want would be to [clear] the event
+     queue regardless, I think ignoring this message is correct. *)
   [%expect
     {|
     ("Saw finished message for unknown rpc id, ignoring finish message."

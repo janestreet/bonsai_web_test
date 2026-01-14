@@ -267,12 +267,12 @@ module Expert_for_custom_test_handles : sig
     -> unit
 
   (* Node.js's asynchronicity is powered by an event loop:
-   https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick
+     https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick
 
-   Some JS APIs might use `setTimeout f 0` or `setImmediate`, which operate
-   independently of Async's `time_source` tools.
+     Some JS APIs might use `setTimeout f 0` or `setImmediate`, which operate
+     independently of Async's `time_source` tools.
 
-   [bump_event_loop] can be used to "flush" any scheduled async events. *)
+     [bump_event_loop] can be used to "flush" any scheduled async events. *)
   val bump_event_loop : unit -> unit Deferred.t
 
   (** Runs any pending [requestAnimationFrame] tasks. Will error if

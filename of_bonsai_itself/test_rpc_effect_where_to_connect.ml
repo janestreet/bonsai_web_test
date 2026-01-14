@@ -494,7 +494,7 @@ module%test Dynamic_where_to_connect = struct
   let send_via_clock ?(print_inflight = false) handle =
     Handle.advance_clock_by handle (Time_ns.Span.of_sec 1.0);
     (* [recompute_view] to send the RPC, another for the response to be evaluated and
-       returned, and then a show to process andprint the response.*)
+       returned, and then a show to process andprint the response. *)
     Handle.recompute_view handle;
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     if print_inflight then print_endline "While inflight:";
@@ -543,7 +543,7 @@ module%test Dynamic_where_to_connect = struct
            (num_times_connection_polled 1) (num_times_client_polled ())))))
        (last_error ()) (inflight_query ()) (refresh <opaque>))
       |}];
-    (* Can then poll poll via interval.*)
+    (* Can then poll poll via interval. *)
     let%bind () = send_via_clock handle in
     [%expect
       {|
@@ -578,7 +578,7 @@ module%test Dynamic_where_to_connect = struct
            (num_times_connection_polled 2) (num_times_client_polled ())))))
        (last_error ()) (inflight_query ()) (refresh <opaque>))
       |}];
-    (* Can then poll poll via interval.*)
+    (* Can then poll poll via interval. *)
     let%bind () = send_via_clock handle in
     [%expect
       {|
@@ -664,7 +664,7 @@ module%test Dynamic_where_to_connect = struct
     Handle.do_actions handle [ 2 ];
     let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
     (* We've switched back, and the connection is the same, but there's a new client
-       state.*)
+       state. *)
     [%expect
       {|
       [server] ("First request" (query 2) (server_name first))
@@ -1186,7 +1186,7 @@ module%test Dynamic_where_to_connect = struct
     [%expect {| ((state Connected) (connecting_since ())) |}];
     Var.set where_to_connect First.where_to_connect;
     (* The connection to the first server is likely still open, but we should confirm that
-       just to be sure.*)
+       just to be sure. *)
     Handle.show handle;
     [%expect {| ((state Connecting) (connecting_since ("1970-01-01 00:00:00Z"))) |}];
     Handle.show handle;

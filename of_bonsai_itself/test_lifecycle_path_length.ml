@@ -31,7 +31,7 @@ struct
           print_endline (Js_of_ocaml.Js_error.to_string js_error))
     in
     (* NOTE: Paths in cont are really big. We believe this is making <app-name> ~50 times
-         slower after having been migrated to the CONT API. *)
+       slower after having been migrated to the CONT API. *)
     [%expect
       {|
       (bonsai_path_x_x bonsai_path_x_y bonsai_path_y_x_x bonsai_path_y_x_y

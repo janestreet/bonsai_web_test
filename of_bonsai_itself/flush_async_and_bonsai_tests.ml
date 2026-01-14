@@ -40,7 +40,7 @@ let computation iterations =
         increment ())
       else Effect.print_s [%message "finished loop"]
   in
-  Bonsai.Edge.on_change ~equal:[%equal: int] count ~callback
+  Bonsai.Edge.on_change ~trigger:`After_display ~equal:[%equal: int] count ~callback
 ;;
 
 let%expect_test _ =

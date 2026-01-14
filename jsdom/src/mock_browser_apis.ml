@@ -49,7 +49,7 @@ let mock_console_log () =
 ;;
 
 (* jsdom's hover simulation doesn't currently work, so we need to do this terrible hack.
-     https://github.com/dperini/nwsapi/issues/119 *)
+   https://github.com/dperini/nwsapi/issues/119 *)
 let mock_matches () =
   let open Js_of_ocaml in
   let f =

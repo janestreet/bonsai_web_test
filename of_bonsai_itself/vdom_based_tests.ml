@@ -4,9 +4,9 @@ open Bonsai.Let_syntax
 open Virtual_dom
 open Bonsai_web_test
 
-(* This test basically just exists because it's really hard to dispatch
-   events deep into a tree without an intermediate representation.  Turns
-   out that Vdom.Node.t is a pretty good intermediate representation. *)
+(* This test basically just exists because it's really hard to dispatch events deep into a
+   tree without an intermediate representation. Turns out that Vdom.Node.t is a pretty
+   good intermediate representation. *)
 let%expect_test "recursive component" =
   let module M = struct
     type t =

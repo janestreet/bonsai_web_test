@@ -61,7 +61,8 @@ module%test Simple_selector = struct
     Handle.click_on ~get_vdom:Fn.id ~selector:(test_selector decrement_selector) handle;
     Handle.click_on ~get_vdom:Fn.id ~selector:(test_selector increment_selector) handle;
     Handle.show handle;
-    (* Should show 2 because the correct increment and decrement selectors has been both hit *)
+    (* Should show 2 because the correct increment and decrement selectors has been both
+       hit *)
     [%expect {| <span> 2 </span> |}]
   ;;
 end
@@ -120,13 +121,13 @@ module%test Keyed = struct
         (chooser ~choices:(Bonsai.return String.Set.empty))
     in
     Handle.show handle
-    (* This assertion should show a failure showing the location of the selector
-       and the dom where it did not find the selector. *)
+    (* This assertion should show a failure showing the location of the selector and the
+       dom where it did not find the selector. *)
   [@@expect.uncaught_exn
     {|
     ("Failed to find element matching selector"
       (selector
-        "[data-bonsai-test-selector='((here lib/bonsai/web_test/of_bonsai_itself/test_test_selector.ml:70:26))']")
+        "[data-bonsai-test-selector='((here lib/bonsai/web_test/of_bonsai_itself/test_test_selector.ml:71:26))']")
       (from_node
          "<div>\
         \n  <Vdom.Node.none-widget> </Vdom.Node.none-widget>\
@@ -144,13 +145,13 @@ module%test Keyed = struct
       ~selector:(test_selector (Bonsai.Test_selector.Keyed.get choice_selectors "bar"))
       ~get_vdom:Fn.id
       handle
-    (* This assertion should show a failure showing the location of the selector,
-       the sexp of the instance and the dom where it did not find the selector. *)
+    (* This assertion should show a failure showing the location of the selector, the sexp
+       of the instance and the dom where it did not find the selector. *)
   [@@expect.uncaught_exn
     {|
     ("Failed to find element matching selector"
       (selector
-        "[data-bonsai-test-selector='((here lib/bonsai/web_test/of_bonsai_itself/test_test_selector.ml:71:25)(bag_inst bar))']")
+        "[data-bonsai-test-selector='((here lib/bonsai/web_test/of_bonsai_itself/test_test_selector.ml:72:25)(bag_inst bar))']")
       (from_node
          "<div>\
         \n  <Vdom.Node.none-widget> </Vdom.Node.none-widget>\
