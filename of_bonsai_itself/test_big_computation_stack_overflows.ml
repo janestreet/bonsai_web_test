@@ -38,9 +38,9 @@ module%test Stack_overflow_during_graph_application = struct
     [%expect {| did not raise |}]
   ;;
 
-  (* let%expect_test ("WASM - Stack overflow during graph application" [@tags "wasm-only"]) = *)
-  (*   test ~n:10_000 () *)
-  (* ;; *)
+  (* let%expect_test ("WASM - Stack overflow during graph application" [@tags "wasm-only"]) =
+   *   test ~n:10_000 ()
+   * ;; *)
 end
 
 module%test Stack_overflow_during_handle_create = struct
@@ -76,11 +76,11 @@ module%test Stack_overflow_during_handle_create = struct
 
   let _ = why_is_the_above_test_stack_overflowing
 
-  (* let%expect_test "Why is the above test still stack overflowing?" = *)
-  (*   why_is_the_above_test_stack_overflowing () *)
-  (* ;; *)
+  (* let%expect_test "Why is the above test still stack overflowing?" =
+   *   why_is_the_above_test_stack_overflowing ()
+   * ;; *)
 
-  (* let%expect_test ("WASM - Stack overflow during handle creation" [@tags "wasm-only"]) = *)
-  (*   test ~n:10_000 () *)
-  (* ;; *)
+  (* let%expect_test ("WASM - Stack overflow during handle creation" [@tags "wasm-only"]) =
+   *   test ~n:10_000 ()
+   * ;; *)
 end

@@ -620,6 +620,57 @@ module%test [@name "Output_type.Join_or_error"] _ = struct
   ;;
 end
 
+module%test [@name "map_response"] _ = struct
+  let print_poll_result t = print_s [%sexp (t : (int, string) Poll_result.t)]
+
+  let%expect_test "maps the response when last_ok_response is Some" =
+    Poll_result.For_testing.create ~last_ok_response:(1, "response ok", timestamp) ()
+    |> Poll_result.map_response ~f:String.uppercase
+    |> print_poll_result;
+    [%expect {| ((last_ok_response (1 "RESPONSE OK" "1970-01-01 00:00:00Z"))) |}]
+  ;;
+
+  let%expect_test "returns unchanged when last_ok_response is None" =
+    Poll_result.For_testing.create
+      ?last_ok_response:None
+      ~last_error:(2, error, add_seconds 1.)
+      ~inflight_query:(3, add_seconds 2.)
+      ~equal_query:[%equal: int]
+      ()
+    |> Poll_result.map_response ~f:String.uppercase
+    |> print_poll_result;
+    [%expect
+      {|
+      ((last_error (2 example_error "1970-01-01 00:00:01Z"))
+       (inflight_query (3 "1970-01-01 00:00:02Z")))
+      |}]
+  ;;
+
+  let%expect_test "preserves other fields when mapping" =
+    Poll_result.For_testing.create
+      ~last_ok_response:(1, "response ok", add_seconds 0.)
+      ~last_error:(2, error, add_seconds 1.)
+      ~inflight_query:(3, add_seconds 2.)
+      ()
+    |> Poll_result.map_response ~f:String.uppercase
+    |> print_poll_result;
+    [%expect
+      {|
+      ((last_ok_response (1 "RESPONSE OK" "1970-01-01 00:00:00Z"))
+       (last_error (2 example_error "1970-01-01 00:00:01Z"))
+       (inflight_query (3 "1970-01-01 00:00:02Z")))
+      |}]
+  ;;
+
+  let%expect_test "can change the response type" =
+    Poll_result.For_testing.create ~last_ok_response:(1, "response ok", timestamp) ()
+    |> Poll_result.map_response ~f:String.length
+    |> [%sexp_of: (int, int) Poll_result.t]
+    |> print_s;
+    [%expect {| ((last_ok_response (1 11 "1970-01-01 00:00:00Z"))) |}]
+  ;;
+end
+
 module%test [@name "Output_type.[]/::"] _ = struct
   let%expect_test "empty list" =
     let t = Poll_result.For_testing.create ~last_ok_response:(1, "foo", timestamp) () in

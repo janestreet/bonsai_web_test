@@ -1621,13 +1621,14 @@ module%test [@name "Rpc_effect.Polling_state_rpc.dispatcher"] _ = struct
   ;;
 end
 
-module%test [@name "Rpc_effect.Polling_state_rpc.babel_dispatcher"] _ = struct
+module%test [@name "Rpc_effect.Polling_state_rpc.versioned_polling_state_dispatcher"] _ =
+struct
   let create_handle ?rpc_implementations () =
     Dispatcher_handle.create
       ?rpc_implementations
       ~sexp_of_response:sexp_of_string
       ~dispatch:
-        (Rpc_effect.Polling_state_rpc.babel_dispatcher
+        (Rpc_effect.Polling_state_rpc.versioned_polling_state_dispatcher
            ~sexp_of_query:[%sexp_of: string]
            ~sexp_of_response:[%sexp_of: string]
            Rpcs.Polling_state_rpc.caller
@@ -2095,7 +2096,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.poll and babel_poll"] _ = struc
     Poller_handle.create
       ?rpc_implementations
       ~poller:
-        (Rpc_effect.Polling_state_rpc.babel_poll
+        (Rpc_effect.Polling_state_rpc.versioned_polling_state_poll
            ~sexp_of_query:[%sexp_of: string]
            ~sexp_of_response:[%sexp_of: string]
            Rpcs.Polling_state_rpc.caller
@@ -2108,7 +2109,7 @@ module%test [@name "Rpc_effect.Polling_state_rpc.poll and babel_poll"] _ = struc
       ()
   ;;
 
-  let%expect_test "Rpc_effect.Polling_state_rpc.babel_poll" =
+  let%expect_test "Rpc_effect.Polling_state_rpc.versioned_polling_state_poll" =
     let { Poller_handle.handle; state } =
       create_babel_handle
         ~rpc_implementations:[ polling_state_rpc_reverse_rpc_implementation ]
