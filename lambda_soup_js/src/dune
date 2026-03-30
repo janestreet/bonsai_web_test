@@ -3,4 +3,4 @@
  (public_name bonsai_web_test.lambda_soup_js)
  (libraries core js_of_ocaml lambdasoup)
  (preprocess
-  (pps ppx_jane js_of_ocaml-ppx)))
+  (pps ppx_jane js_of_ocaml-ppx -compare-require-explicit-locality)))

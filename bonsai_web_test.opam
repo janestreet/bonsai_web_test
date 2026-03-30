@@ -6,6 +6,7 @@ bug-reports: "https://github.com/janestreet/bonsai_web_test/issues"
 dev-repo: "git+https://github.com/janestreet/bonsai_web_test.git"
 doc: "https://ocaml.janestreet.com/ocaml-core/latest/doc/bonsai_web_test/index.html"
 license: "MIT"
+x-maintenance-intent: ["(latest)"]
 build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
@@ -47,6 +48,7 @@ depends: [
   "js_of_ocaml-ppx"             {>= "6.0.0"}
   "lambdasoup"                  {>= "0.6.3"}
   "re"                          {>= "1.8.0"}
+  "uri"                         {>= "3.0.0"}
 ]
 available: arch != "arm32" & arch != "x86_32"
 synopsis: "A library for testing dynamic bonsai webapps, using Js_of_ocaml"

@@ -1,0 +1,6 @@
+(library
+ (name mock_navigation_for_url_var)
+ (public_name bonsai_web_test.mock_navigation_for_url_var)
+ (libraries core js_of_ocaml uri)
+ (preprocess
+  (pps ppx_jane js_of_ocaml-ppx -compare-require-explicit-locality)))
