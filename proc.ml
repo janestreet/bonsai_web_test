@@ -156,6 +156,56 @@ module Handle = struct
     ~selector
     =
     let element = get_element handle ~get_vdom ~selector in
+    let element =
+      match element with
+      | Element ({ tag_name = "a"; _ } as element_data) ->
+        (* Special handling via an extra on_click listener to simulate navigation. *)
+        let href = List.Assoc.find element_data.attributes ~equal:String.equal "href" in
+        (match href with
+         | Some href ->
+           let download =
+             List.Assoc.find element_data.attributes ~equal:String.equal "download"
+             |> Option.is_some
+           in
+           let target =
+             List.Assoc.find element_data.attributes ~equal:String.equal "target"
+             |> Option.value ~default:"_self"
+           in
+           let open Js_of_ocaml in
+           let existing_on_click =
+             List.Assoc.find element_data.handlers ~equal:String.equal "onclick"
+           in
+           let on_click evt =
+             Option.iter existing_on_click ~f:(fun f ->
+               Js.Unsafe.fun_call f [| Js.Unsafe.inject evt |]);
+             let default_prevented = evt##.defaultPrevented |> Js.to_bool in
+             if not default_prevented
+             then
+               Mock_navigation_for_url_var.mock_navigate
+                 ~download
+                 ?ctrl_key_down
+                 ?shift_key_down
+                 ?alt_key_down
+                 ~href
+                 ~target
+                 ()
+           in
+           let on_click_removed =
+             List.Assoc.remove element_data.handlers ~equal:String.equal "onclick"
+           in
+           let on_click_added_back =
+             List.Assoc.add
+               on_click_removed
+               ~equal:String.equal
+               "onclick"
+               (Handler.of_any_exn
+                  ~name:"onclick"
+                  (Js.Unsafe.inject (Js.wrap_callback on_click)))
+           in
+           Node_helpers.Element { element_data with handlers = on_click_added_back }
+         | None -> element)
+      | _ -> element
+    in
     Node_helpers.User_actions.click_on
       element
       ?extra_event_fields
@@ -180,6 +230,26 @@ module Handle = struct
       ?shift_key_down
       ?alt_key_down
       ?ctrl_key_down
+  ;;
+
+  let auxclick
+    ?extra_event_fields
+    ?shift_key_down
+    ?alt_key_down
+    ?ctrl_key_down
+    handle
+    ~get_vdom
+    ~selector
+    ~button
+    =
+    let element = get_element handle ~get_vdom ~selector in
+    Node_helpers.User_actions.auxclick
+      element
+      ?extra_event_fields
+      ?shift_key_down
+      ?alt_key_down
+      ?ctrl_key_down
+      ~button
   ;;
 
   let set_checkbox

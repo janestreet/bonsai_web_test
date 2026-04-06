@@ -97,6 +97,7 @@ module Handle_experimental : sig
   val blur : here:[%call_pos] -> _ t -> unit
   val click_on : here:[%call_pos] -> _ t -> selector:string -> unit
   val right_click_on : here:[%call_pos] -> _ t -> selector:string -> unit
+  val middle_click_on : here:[%call_pos] -> _ t -> selector:string -> unit
 
   val set_input_element_value
     :  here:[%call_pos]
@@ -194,6 +195,7 @@ module Mouse_event : sig
       | Mouse_down
       | Mouse_up
       | Click
+      | Aux_click
       | Mouse_leave
       | Mouse_enter
       | Mouse_out
@@ -243,12 +245,23 @@ module Keyboard_event : sig
 end
 
 module Expert_for_custom_test_handles : sig
+  (** [create_event] will create an event of type [event_name]. *)
+  val create_event
+    :  ?event_type:string
+    -> ?props:(string * Js_of_ocaml.Js.Unsafe.any) list
+    -> ?bubbles:bool
+    -> ?cancelable:bool
+    -> event_name:string
+    -> unit
+    -> Dom_html.event Js.t
+
   (** [dispatch_event] will dispatch an event of type [event_name] on the first element
       selected by [selector]. *)
   val dispatch_event
     :  ?event_type:string
     -> ?props:(string * Js_of_ocaml.Js.Unsafe.any) list
     -> ?bubbles:bool
+    -> ?cancelable:bool
     -> event_name:string
     -> selector:string
     -> unit
@@ -262,6 +275,7 @@ module Expert_for_custom_test_handles : sig
     :  ?event_type:string
     -> ?props:(string * Js_of_ocaml.Js.Unsafe.any) list
     -> ?bubbles:bool
+    -> ?cancelable:bool
     -> event_name:string
     -> < dispatchEvent : Dom_html.event Js.t -> 'res Js.meth ; .. > Js.t
     -> unit

@@ -8,7 +8,13 @@ module Expert_for_custom_test_handles = struct
     | Some constr -> constr
   ;;
 
-  let dispatch_event' ?(event_type = "Event") ?props ?(bubbles = true) ~event_name element
+  let create_event
+    ?(event_type = "Event")
+    ?props
+    ?(bubbles = true)
+    ?(cancelable = true)
+    ~event_name
+    ()
     =
     let event_constr = event event_type in
     let props =
@@ -17,17 +23,23 @@ module Expert_for_custom_test_handles = struct
       | Some props -> Js.Unsafe.obj (Array.of_list props)
     in
     Js.Unsafe.set props (Js.string "bubbles") (Js.bool bubbles);
-    let event = new%js event_constr (Js.string event_name) props in
+    Js.Unsafe.set props (Js.string "cancelable") (Js.bool cancelable);
+    new%js event_constr (Js.string event_name) props
+  ;;
+
+  let dispatch_event' ?event_type ?props ?bubbles ?cancelable ~event_name element =
+    let event = create_event ?event_type ?props ?bubbles ?cancelable ~event_name () in
     element##dispatchEvent event |> Fn.ignore
   ;;
 
-  let dispatch_event ?event_type ?props ?bubbles ~event_name ~selector () =
+  let dispatch_event ?event_type ?props ?bubbles ?cancelable ~event_name ~selector () =
     let element =
       Dom_html.document##querySelector (Js.string selector) |> Js.Opt.to_option
     in
     match element with
     | None -> print_endline [%string "No element with selector `%{selector}` found!"]
-    | Some element -> dispatch_event' ?event_type ?props ?bubbles ~event_name element
+    | Some element ->
+      dispatch_event' ?event_type ?props ?bubbles ?cancelable ~event_name element
   ;;
 
   let clear_dom () =
@@ -70,7 +82,7 @@ module Expert_for_custom_test_handles = struct
 
   let reset_global_state_for_startup ~(here : [%call_pos]) ?has_focus () =
     assert_in_jsdom_context ~here ();
-    Byo_toplayer_private_vdom.For_jsdom_tests.reset_inertness ();
+    Bonsai_web_toplayer_private_vdom.For_jsdom_tests.reset_inertness ();
     clear_dom ();
     Mock_browser_apis.mock_console_log ();
     (match has_focus with
@@ -78,13 +90,11 @@ module Expert_for_custom_test_handles = struct
      | None -> ());
     Mock_browser_apis.mock_matches ();
     Mock_browser_apis.Animation_frame_tasks.mock ();
-    Byo_toplayer_private_vdom.For_jsdom_tests.reset_inertness ()
+    Bonsai_web_toplayer_private_vdom.For_jsdom_tests.reset_inertness ()
   ;;
 
   let reset_global_state_for_shutdown () =
-    Byo_toplayer_private_vdom.For_jsdom_tests.reset_inertness ();
-    clear_dom ();
-    Byo_toplayer_private_vdom.For_jsdom_tests.reset_inertness ();
+    Bonsai_web_toplayer_private_vdom.For_jsdom_tests.reset_inertness ();
     Mock_browser_apis.Animation_frame_tasks.cleanup ()
   ;;
 
@@ -193,6 +203,7 @@ module Mouse_event = struct
       | Mouse_down
       | Mouse_up
       | Click
+      | Aux_click
       | Mouse_leave
       | Mouse_enter
       | Mouse_out
@@ -205,6 +216,7 @@ module Mouse_event = struct
       | Mouse_down -> "mousedown"
       | Mouse_up -> "mouseup"
       | Click -> "click"
+      | Aux_click -> "auxclick"
       | Mouse_leave -> "mouseleave"
       | Mouse_enter -> "mouseenter"
       | Mouse_out -> "mouseout"
@@ -403,6 +415,7 @@ module Handle_experimental = struct
   ;;
 
   let destroy { handle; _ } =
+    Bonsai_web.Driver.destroy_dom handle;
     Bonsai_web.Driver.destroy handle;
     reset_global_state_for_shutdown ()
   ;;
@@ -566,6 +579,44 @@ module Handle_experimental = struct
       it should be fine. *)
   let click_on ~(here : [%call_pos]) harness ~selector =
     let node = query_selector_non_inert_exn ~here harness ~selector in
+    (match Js.to_string node##.tagName with
+     | "A" ->
+       (* Special handling via an extra on_click listener to simulate navigation. *)
+       let href = node##getAttribute (Js.string "href") in
+       (match Js.Opt.to_option href with
+        | Some href ->
+          let href = Js.to_string href in
+          let target =
+            node##getAttribute (Js.string "target")
+            |> Js.Opt.to_option
+            |> Option.value_map ~default:"_self" ~f:Js.to_string
+          in
+          let listener_id = ref None in
+          let on_click (evt : Dom_html.mouseEvent Js.t) =
+            let default_prevented = evt##.defaultPrevented |> Js.to_bool in
+            if not default_prevented
+            then
+              Mock_navigation_for_url_var.mock_navigate
+                ~download:(node##getAttribute (Js.string "download") |> Js.Opt.test)
+                ~ctrl_key_down:(evt##.ctrlKey |> Js.to_bool)
+                ~shift_key_down:(evt##.shiftKey |> Js.to_bool)
+                ~alt_key_down:(evt##.altKey |> Js.to_bool)
+                ~href
+                ~target
+                ();
+            Option.iter !listener_id ~f:Dom_html.removeEventListener
+          in
+          listener_id
+          := Some
+               (Dom_html.addEventListener
+                  node
+                  Dom_events.Typ.click
+                  (Dom.handler (fun evt ->
+                     on_click evt;
+                     Js.bool true))
+                  (Js.bool false))
+        | None -> ())
+     | _ -> ());
     Pointer_event.dispatch' ~kind:Pointer_down node;
     Mouse_event.dispatch' ~kind:Mouse_down ~button:`Left node;
     Pointer_event.dispatch' ~kind:Pointer_up node;
@@ -577,7 +628,15 @@ module Handle_experimental = struct
     let node = query_selector_non_inert_exn ~here harness ~selector in
     Mouse_event.dispatch' ~kind:Mouse_down ~button:`Right node;
     Mouse_event.dispatch' ~kind:Mouse_up ~button:`Right node;
-    Mouse_event.dispatch' ~kind:Context_menu ~button:`Right node
+    Mouse_event.dispatch' ~kind:Context_menu ~button:`Right node;
+    Mouse_event.dispatch' ~kind:Aux_click ~button:`Right node
+  ;;
+
+  let middle_click_on ~(here : [%call_pos]) harness ~selector =
+    let node = query_selector_non_inert_exn ~here harness ~selector in
+    Mouse_event.dispatch' ~kind:Mouse_down ~button:`Middle node;
+    Mouse_event.dispatch' ~kind:Mouse_up ~button:`Middle node;
+    Mouse_event.dispatch' ~kind:Aux_click ~button:`Middle node
   ;;
 
   let set_input_element_value ~(here : [%call_pos]) harness ~selector ~value =
