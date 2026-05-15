@@ -24,6 +24,7 @@ depends: [
   "bonsai_test"
   "bonsai_web"
   "core"
+  "expect_test_helpers_base"
   "expect_test_helpers_core"
   "expectable"
   "incr_map"
@@ -50,7 +51,7 @@ depends: [
   "re"                          {>= "1.8.0"}
   "uri"                         {>= "3.0.0"}
 ]
-available: arch != "arm32" & arch != "x86_32"
+available: arch != "x86_32"
 synopsis: "A library for testing dynamic bonsai webapps, using Js_of_ocaml"
 description: "
 Bonsai is a library for building reusable UI components inside an

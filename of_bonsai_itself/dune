@@ -7,7 +7,7 @@
    bonsai_test.shared_for_testing_bonsai bonsai_web bonsai_web.proc
    bonsai_web_test bonsai_web_test_async core
    polling_state_rpc.diffable_polling_state_rpc_response
-   expect_test_helpers_core.expect_test_helpers_base expect_test_helpers_core
+   expect_test_helpers_base expect_test_helpers_core
    patdiff.expect_test_patdiff expectable incr_map incremental js_of_ocaml
    legacy_diffable async_kernel.persistent_connection_kernel
    polling_state_rpc re bonsai_web.rpc_effect_kernel streamable

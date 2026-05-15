@@ -19,20 +19,19 @@ module%test Simple_selector = struct
         graph
     in
     let%arr state and action in
-    {%html|
+    {%html.jsx|
       <div>
         <button
           on_click=%{fun _ -> action `Decr}
           %{Bonsai.Test_selector.attr decrement_selector}
         >
-          -1
-        </button>
-        <span %{Bonsai.Test_selector.attr count_selector}>%{state#Int}</span>
-        <button
+          #{" -1 "}</button
+        ><span %{Bonsai.Test_selector.attr count_selector}>%{state#Int}</span
+        ><button
           on_click=%{fun _ -> action `Incr}
           %{Bonsai.Test_selector.attr increment_selector}
         >
-          +1
+          #{" +1 "}
         </button>
       </div>
     |}
@@ -79,7 +78,7 @@ module%test Keyed = struct
         choices
         ~f:(fun c _graph ->
           let%arr c and set_state in
-          {%html|
+          {%html.jsx|
             <button
               on_click=%{fun _ -> set_state (Some c)}
               %{Bonsai.Test_selector.attr (Bonsai.Test_selector.Keyed.get choice_selectors c)}
@@ -92,11 +91,11 @@ module%test Keyed = struct
     let selected =
       match%arr state with
       | Some s ->
-        {%html|<p %{Bonsai.Test_selector.attr selected_selector}>%{s#String}</p>|}
+        {%html.jsx|<p %{Bonsai.Test_selector.attr selected_selector}>%{s#String}</p>|}
       | None -> Vdom.Node.none
     in
     let%arr selected and choices in
-    {%html|<div>%{selected}*{Map.data choices}</div>|}
+    {%html.jsx|<div>%{selected}*{Map.data choices}</div>|}
   ;;
 
   let%expect_test "integration test using the test selector bag" =
@@ -127,7 +126,7 @@ module%test Keyed = struct
     {|
     ("Failed to find element matching selector"
       (selector
-        "[data-bonsai-test-selector='((here lib/bonsai/web_test/of_bonsai_itself/test_test_selector.ml:71:26))']")
+        "[data-bonsai-test-selector='((here lib/bonsai/web_test/of_bonsai_itself/test_test_selector.ml:70:26))']")
       (from_node
          "<div>\
         \n  <Vdom.Node.none-widget> </Vdom.Node.none-widget>\
@@ -151,7 +150,7 @@ module%test Keyed = struct
     {|
     ("Failed to find element matching selector"
       (selector
-        "[data-bonsai-test-selector='((here lib/bonsai/web_test/of_bonsai_itself/test_test_selector.ml:72:25)(bag_inst bar))']")
+        "[data-bonsai-test-selector='((here lib/bonsai/web_test/of_bonsai_itself/test_test_selector.ml:71:25)(bag_inst bar))']")
       (from_node
          "<div>\
         \n  <Vdom.Node.none-widget> </Vdom.Node.none-widget>\
