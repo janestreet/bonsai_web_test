@@ -95,18 +95,28 @@ module Animation_frame_tasks = struct
     let queue = Queue.create () in
     global_queue := Some queue;
     let window = Dom_html.window in
+    let request_animation_frame =
+      Js.wrap_callback (fun (f : (unit, Js.number_t -> unit) Js.meth_callback) ->
+        Queue.enqueue queue (fun () ->
+          if not (Option.mem !global_queue queue ~equal:phys_equal)
+          then
+            raise_s
+              [%message
+                "BUG: global mocked requestAnimationFrame queue has changed since this \
+                 task was scheduled"];
+          Js.Unsafe.fun_call f [| Js.Unsafe.inject () |]))
+    in
+    let ( (* [Dom_html.window] is actually [globalThis], which is not the same as [window]
+             in [jsdom]. Setting this here for back-compat *) )
+      =
+      Js.Unsafe.set window "requestAnimationFrame" request_animation_frame
+    in
+    (* Using [Js.Unsafe.global] here for the types. [Dom_html.window] is actually just an
+       alias for [Js.Unsafe.global], which it probably should not be. *)
     Js.Unsafe.set
-      window
+      Js.Unsafe.global##.window
       "requestAnimationFrame"
-      (Js.wrap_callback (fun (f : (unit, Js.number_t -> unit) Js.meth_callback) ->
-         Queue.enqueue queue (fun () ->
-           if not (Option.mem !global_queue queue ~equal:phys_equal)
-           then
-             raise_s
-               [%message
-                 "BUG: global mocked requestAnimationFrame queue has changed since this \
-                  task was scheduled"];
-           Js.Unsafe.fun_call f [| Js.Unsafe.inject () |])))
+      request_animation_frame
   ;;
 
   let run_queued () =
@@ -126,8 +136,10 @@ module Animation_frame_tasks = struct
     match !global_queue with
     | None -> print_endline "WARNING: no mock requestAnimationFrame queue installed"
     | Some queue ->
-      if not (Queue.is_empty queue)
-      then print_endline "WARNING: requestAnimationFrame queue not empty upon cleanup";
+      let () =
+        if not (Queue.is_empty queue)
+        then print_endline "WARNING: requestAnimationFrame queue not empty upon cleanup"
+      in
       global_queue := None
   ;;
 end
