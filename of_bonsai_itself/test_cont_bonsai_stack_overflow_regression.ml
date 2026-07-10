@@ -30,12 +30,8 @@ let%expect_test "stack overflow regression test: long chain of subs" =
 ;;
 
 let run_long_chain_test ~n =
-  (* NOTE: This expect test is a regression test against stack overflows in the
-     Bonsai.Cont API. *)
   let computation (local_ _graph) =
     let value = ref (Import.opaque_const_value 0) in
-    (* At values higher than this, _Incremental_ starts stack overflowing. A problem for
-       another day... *)
     for _ = 0 to n do
       value := Bonsai.map !value ~f:(( + ) 1)
     done;
@@ -44,30 +40,31 @@ let run_long_chain_test ~n =
   Handle.create ~optimize:true (Result_spec.sexp (module Int)) computation
 ;;
 
-let%expect_test "stack overflow regression test: long chain of Value.map" =
-  (* At values higher than this, _Incremental_ starts stack overflowing. A problem for
-     another day... *)
-  let handle = run_long_chain_test ~n:400 in
+let breaking_point = 1018
+
+let%expect_test "long chain of Value.map" =
+  (* At values higher than this, we get "node with too large value" *)
+  let handle = run_long_chain_test ~n:breaking_point in
   Handle.show handle;
-  [%expect {| 401 |}]
+  [%expect {| 1019 |}]
 ;;
 
-let%expect_test ("BUG stack overflow regression test: long chain of Value.map"
-  [@tags "js-only", "no-wasm"])
-  =
+let%expect_test ("js: first long Value.map chain to fail" [@tags "js-only", "no-wasm"]) =
   Expect_test_helpers_base.require_does_raise (fun () ->
-    let _ : _ Handle.t = run_long_chain_test ~n:1000 in
+    let _ : _ Handle.t = run_long_chain_test ~n:(breaking_point + 1) in
     ());
-  (* the stack overflow is in Incremental *)
   [%expect {| ("Stack overflow") |}]
 ;;
 
-let%expect_test ("BUG stack overflow regression test: long chain of Value.map"
-  [@tags "wasm-only"])
-  =
-  Expect_test_helpers_base.require_does_not_raise (fun () ->
-    let _ : _ Handle.t = run_long_chain_test ~n:1000 in
+let%expect_test ("wasm: first long Value.map chain to fail" [@tags "wasm-only"]) =
+  Expect_test_helpers_base.require_does_raise (fun () ->
+    let _ : _ Handle.t = run_long_chain_test ~n:(breaking_point + 1) in
     ());
-  (* the stack overflow is in Incremental *)
-  [%expect {| |}]
+  [%expect
+    {|
+    ("node with too large height"
+      ((Height 1025)
+       (Max    1024))
+      lib/incremental/src/adjust_heights_heap.ml:LINE:COL)
+    |}]
 ;;

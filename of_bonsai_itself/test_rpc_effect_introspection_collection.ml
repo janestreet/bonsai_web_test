@@ -986,7 +986,7 @@ module%test [@name "Normal Rpc.Rpc.dispatch"] _ = struct
       ("RPC started" (query second-rpc))
       ("RPC started" (query third-rpc))
       ("RPC started" (query fourth-rpc))
-      ("RPC response not tracked by RPC Effect Inspector"
+      ("Received RPC response not tracked by RPC Effect Inspector."
        (rpc ((name reverse-rpc) (version 1))) (payload_bytes 17))
       ("RPC finished" (response (Ok cpr-dnoces)))
       ("RPC finished" (response (Ok cpr-driht)))
@@ -2687,5 +2687,149 @@ struct
       +|    (response_size 15))))
       |}];
     return ()
+  ;;
+end
+
+module%test [@name "Rpc_effect_introspection.just_sent_ignored_query"] _ = struct
+  (* These tests exercise the introspection machinery directly on a hand-built
+     [Pipe_transport]-based connection pair so we can call raw
+     [Rpc.Rpc.dispatch]/[Polling_state_rpc.Client] APIs without the instrumentation that
+     [Rpc_effect]'s dispatchers add. *)
+
+  let setup_traced_connection
+    (type s)
+    (implementations : s Rpc.Implementations.t)
+    ~(connection_state : Rpc.Connection.t -> s)
+    =
+    let to_server = Pipe.create () in
+    let to_client = Pipe.create () in
+    let time_source =
+      Synchronous_time_source.create ~now:Time_ns.epoch ()
+      |> Synchronous_time_source.read_only
+    in
+    let create_one
+      (type conn_state)
+      ?implementations
+      ~(connection_state : Rpc.Connection.t -> conn_state)
+      pipe_to
+      pipe_from
+      =
+      let transport =
+        Pipe_transport.create Pipe_transport.Kind.string (fst pipe_to) (snd pipe_from)
+      in
+      let%bind.Deferred conn =
+        Rpc.Connection.create
+          ~time_source
+          ?implementations
+          ~heartbeat_config:Rpc.Connection.Heartbeat_config.never_heartbeat
+          ~connection_state
+          transport
+      in
+      return (Result.ok_exn conn)
+    in
+    let server_conn_ivar = Ivar.create () in
+    don't_wait_for
+      (let%bind.Deferred server_conn =
+         create_one ~implementations ~connection_state to_server to_client
+       in
+       Ivar.fill_exn server_conn_ivar server_conn;
+       Rpc.Connection.close_finished server_conn);
+    let%bind.Deferred client_conn =
+      create_one ~connection_state:(fun _ -> ()) to_client to_server
+    in
+    Rpc_effect.For_introspection.trace_connection client_conn;
+    let%bind.Deferred server_conn = Ivar.read server_conn_ivar in
+    return (client_conn, server_conn)
+  ;;
+
+  let close_both client_conn server_conn =
+    let%bind () = Rpc.Connection.close client_conn in
+    Rpc.Connection.close_finished server_conn
+  ;;
+
+  let%expect_test "[just_sent_ignored_query] suppresses the untracked response warning" =
+    let implementations =
+      Rpc.Implementations.create_exn
+        ~on_unknown_rpc:`Raise
+        ~implementations:[ reverse_rpc_implementation ]
+        ~on_exception:Log_on_background_exn
+    in
+    let%bind client_conn, server_conn =
+      setup_traced_connection implementations ~connection_state:Fn.id
+    in
+    (* A raw [Rpc.Rpc.dispatch] on a traced connection does not call
+       [just_sent_query_with_id], so its response has no mapping and the inspector prints
+       the warning when recording is enabled. *)
+    let%bind (_ : string Or_error.t) =
+      Rpc.Rpc.dispatch Rpcs.reverse_rpc_v1 client_conn "one"
+    in
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    [%expect
+      {|
+      ("Received RPC response not tracked by RPC Effect Inspector."
+       (rpc ((name reverse-rpc) (version 1))) (payload_bytes 10))
+      |}];
+    (* Same dispatch, but we mark the outgoing tracing event as ignored immediately after
+       dispatch. The response is silently dropped. *)
+    let response_deferred = Rpc.Rpc.dispatch Rpcs.reverse_rpc_v1 client_conn "two" in
+    Rpc_effect.For_introspection.just_sent_ignored_query ();
+    let%bind (_ : string Or_error.t) = response_deferred in
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    [%expect {| |}];
+    close_both client_conn server_conn
+  ;;
+
+  let%expect_test "[Polling_state_rpc.Client.forget_on_server \
+                   ~on_dispatch:just_sent_ignored_query] suppresses the untracked \
+                   response warning"
+    =
+    let open Rpc_effect.For_introspection.For_testing in
+    let implementations =
+      Rpc.Implementations.create_exn
+        ~on_unknown_rpc:`Raise
+        ~implementations:[ polling_state_rpc_reverse_rpc_implementation ]
+        ~on_exception:Log_on_background_exn
+    in
+    let%bind client_conn, server_conn =
+      setup_traced_connection implementations ~connection_state:Fn.id
+    in
+    let client = Polling_state_rpc.Client.create Rpcs.Polling_state_rpc.rpc_v1 in
+    (* Turn off recording while we do an untracked setup dispatch so the [Query] response
+       doesn't generate a warning of its own. *)
+    stop_recording ();
+    let%bind (_ : string Or_error.t) =
+      Polling_state_rpc.Client.dispatch client client_conn "capybara"
+    in
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    start_recording ();
+    (* Without the hook, [Forget_client] dispatches an underlying RPC that is never
+       mapped, and its [Cancellation_successful] response triggers the warning. *)
+    let%bind (_ : unit Or_error.t) =
+      Polling_state_rpc.Client.forget_on_server client client_conn
+    in
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    [%expect
+      {|
+      ("Received RPC response not tracked by RPC Effect Inspector."
+       (rpc ((name polling-state-rpc-reverse-rpc) (version 1))) (payload_bytes 7))
+      |}];
+    (* Re-establish a query to forget, again quietly. *)
+    stop_recording ();
+    let%bind (_ : string Or_error.t) =
+      Polling_state_rpc.Client.dispatch client client_conn "capybara"
+    in
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    start_recording ();
+    (* With the hook, the [Forget_client] tracing event is marked ignored, and the
+       response is silently dropped. *)
+    let%bind (_ : unit Or_error.t) =
+      Polling_state_rpc.Client.forget_on_server
+        ~on_dispatch:Rpc_effect.For_introspection.just_sent_ignored_query
+        client
+        client_conn
+    in
+    let%bind () = Async_kernel_scheduler.yield_until_no_jobs_remain () in
+    [%expect {| |}];
+    close_both client_conn server_conn
   ;;
 end
