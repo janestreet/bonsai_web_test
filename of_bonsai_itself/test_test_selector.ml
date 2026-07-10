@@ -19,7 +19,7 @@ module%test Simple_selector = struct
         graph
     in
     let%arr state and action in
-    {%html.jsx|
+    {%html|
       <div>
         <button
           on_click=%{fun _ -> action `Decr}
@@ -78,7 +78,7 @@ module%test Keyed = struct
         choices
         ~f:(fun c _graph ->
           let%arr c and set_state in
-          {%html.jsx|
+          {%html|
             <button
               on_click=%{fun _ -> set_state (Some c)}
               %{Bonsai.Test_selector.attr (Bonsai.Test_selector.Keyed.get choice_selectors c)}
@@ -91,11 +91,11 @@ module%test Keyed = struct
     let selected =
       match%arr state with
       | Some s ->
-        {%html.jsx|<p %{Bonsai.Test_selector.attr selected_selector}>%{s#String}</p>|}
+        {%html|<p %{Bonsai.Test_selector.attr selected_selector}>%{s#String}</p>|}
       | None -> Vdom.Node.none
     in
     let%arr selected and choices in
-    {%html.jsx|<div>%{selected}*{Map.data choices}</div>|}
+    {%html|<div>%{selected}*{Map.data choices}</div>|}
   ;;
 
   let%expect_test "integration test using the test selector bag" =

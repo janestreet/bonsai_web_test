@@ -200,7 +200,7 @@ module%test [@name "Multiple custom [where_to_connect]s"] _ = struct
             let%bind.Effect r = eff () in
             Effect.print_s ([%sexp_of: string Or_error.t] r)
           in
-          {%html.jsx|
+          {%html|
             <div>
               <button id="button1" on_click=%{print_on_click dispatcher1}>button1</button>
               <button id="button2" on_click=%{print_on_click dispatcher2}>button2</button>

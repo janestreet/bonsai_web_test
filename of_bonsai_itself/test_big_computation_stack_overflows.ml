@@ -21,6 +21,8 @@ let component ~n graph =
   component graph
 ;;
 
+let depth = 2_000
+
 module%test Stack_overflow_during_graph_application = struct
   let test ~n ?(here = Stdlib.Lexing.dummy_pos) () =
     Expect_test_helpers_core.require_does_not_raise ~here (fun () ->
@@ -34,7 +36,7 @@ module%test Stack_overflow_during_graph_application = struct
   let%expect_test ("JSOO - Stack overflow during graph application"
     [@tags "js-only", "no-wasm"])
     =
-    test ~n:1_000 ();
+    test ~n:depth ();
     [%expect {| did not raise |}]
   ;;
 
@@ -55,14 +57,14 @@ module%test Stack_overflow_during_handle_create = struct
   let%expect_test ("JSOO - Stack overflow during handle creation"
     [@tags "js-only", "no-wasm"])
     =
-    test ~n:1_000 ();
+    test ~n:depth ();
     [%expect {| ("Stack overflow") |}]
   ;;
 
   let why_is_the_above_test_stack_overflowing () =
     try
       let _ : (unit, never_returns) Handle.t =
-        Handle.create Result_spec.invisible (fun graph -> component ~n:1_000 graph)
+        Handle.create Result_spec.invisible (fun graph -> component ~n:depth graph)
       in
       ()
     with
